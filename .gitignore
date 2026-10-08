@@ -21,3 +21,9 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Generated data (published to gh-pages; sync locally with npm run sync:data)
+/static/data/changes.json
+
+# pi loop session artifacts
+.pi-loop.json*

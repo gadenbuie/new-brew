@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 // Regenerates static/data/changes.json — the precomputed dataset of
 // Homebrew formulae/casks added or updated in the last N days.
-// See DESIGN.md ("Precomputed changes"). Run by a scheduled GitHub Action;
-// zero external dependencies (Node stdlib + global fetch), Node >= 22.
+// See DESIGN.md ("Precomputed changes"). Run by a scheduled GitHub Action,
+// which commits the output to the gh-pages branch (untracked on main);
+// locally, `npm run sync:data` pulls it back for the dev server.
+// Zero external dependencies (Node stdlib + global fetch), Node >= 22.
 
 import { execFile as execFileCb } from 'node:child_process';
 import { promises as fs } from 'node:fs';

@@ -21,7 +21,8 @@ that `brew update` itself uses:
 
 ### 1. Precomputed changes (GitHub Action, 3× per day across US work hours)
 
-A scheduled workflow generates `static/data/changes.json`. It runs at
+A scheduled workflow generates `changes.json` and commits it to the
+`gh-pages` branch (never `main`). It runs at
 8:00am ET, 12:30pm ET, and 5:00pm ET (2pm PT) — UTC cron `0 12`, `30 16`,
 `0 21` (times drift an hour earlier in winter since cron ignores DST —
 acceptable):
@@ -176,23 +177,30 @@ that revisiting between scheduled runs costs **zero API requests**:
 
 ```
 .github/workflows/
-  data.yml      # 3×/day (US work hours): build changes.json, commit to repo
-  deploy.yml    # on push to main: build site, deploy to Pages
+  data.yml      # 3×/day (US work hours): build changes.json, commit to gh-pages
+  deploy.yml    # on push to main: build site, publish build to gh-pages
 scripts/
   build-data.mjs   # the Action's generator
 src/routes/+page.svelte        # the whole app (single route)
 src/lib/data.svelte.ts         # changes.json fetch + gap-fill + merge + localStorage cache
 src/lib/state.svelte.ts        # localStorage: last visit, filters, expansion
 src/lib/components/            # Row.svelte, PkgCard.svelte, FilterBar.svelte, SincePicker.svelte
-static/data/changes.json       # generated, committed by the Action
+static/data/changes.json       # generated; untracked — synced from gh-pages via npm run sync:data
 ```
 
 ## GitHub Pages deployment
 
-- Public repo → Actions minutes are free; the 3×-daily data job costs three
-  bot commits a day in history (bot commits are `[skip ci]` so no build
-  cascades).
-- `deploy.yml` builds and deploys via the official Pages Actions flow.
+- Pages serves the `gh-pages` branch directly (Source: "Deploy from a
+  branch", set once in repo settings). `main` holds only source.
+- `deploy.yml` builds on every push to `main` and publishes `build/` to
+  `gh-pages`, carrying over the latest `changes.json` so the rebuild never
+  regresses the data job's commits.
+- The 3×-daily `data.yml` commits regenerated `changes.json` straight to
+  `gh-pages` — data goes live via the Pages branch build with zero bot
+  commits on `main` (public repo → Actions minutes are free).
+- Locally, `npm run sync:data` copies `data/changes.json` off the `gh-pages`
+  branch into `static/data/` for the dev server.
+- `.nojekyll` ships in `static/` so the branch build skips Jekyll.
 - Pages CDN serves changes.json with sensible caching; the merged dataset is
   also kept in localStorage as the revisit/edge-case cache (see
   "Client-side dataset cache" above).

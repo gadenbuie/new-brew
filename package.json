@@ -7,6 +7,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
+		"sync:data": "git fetch origin gh-pages && mkdir -p static/data && git show origin/gh-pages:data/changes.json > static/data/changes.json",
 		"preview": "vite dev",
 		"test": "vitest run",
 		"prepare": "svelte-kit sync || echo ''",

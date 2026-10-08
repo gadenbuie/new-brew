@@ -7,9 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
@@ -18,9 +16,6 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v5
 
@@ -35,13 +30,26 @@ jobs:
       - name: Build site
         run: npm run build
 
-      - uses: actions/configure-pages@v5
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      # gh-pages holds the published site, including the changes.json that
+      # data.yml commits there (it's untracked on main).
+      - name: Check out gh-pages
+        uses: actions/checkout@v5
         with:
-          path: build
+          ref: gh-pages
+          path: site
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publish build to gh-pages
+        run: |
+          # Carry over the freshest changes.json so the rebuild never
+          # regresses the data committed by data.yml.
+          mkdir -p build/data
+          git -C site show HEAD:data/changes.json > build/data/changes.json
+          rsync -a --delete --exclude .git build/ site/
+          cd site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "deploy: site build from main@${GITHUB_SHA:0:7}"
+            git push
+          fi

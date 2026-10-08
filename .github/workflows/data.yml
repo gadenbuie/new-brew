@@ -30,15 +30,23 @@ jobs:
         run: node scripts/build-data.mjs
         timeout-minutes: 15
 
+      # changes.json is untracked on main; it lives on gh-pages, the branch
+      # Pages serves. Committing it there puts the fresh data live via the
+      # Pages branch build — no deploy cascade, no bot commits on main.
+      - name: Check out gh-pages
+        uses: actions/checkout@v5
+        with:
+          ref: gh-pages
+          path: site
+
       - name: Commit and push if changed
         run: |
+          cp static/data/changes.json site/data/changes.json
+          cd site
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add static/data/changes.json
+          git add data/changes.json
           if ! git diff --cached --quiet; then
-            git commit -m "chore(data): rebuild changes.json [skip ci]"
+            git commit -m "chore(data): rebuild changes.json"
             git push
           fi
-        # [skip ci] is intentional: bot data commits must NOT trigger the
-        # deploy workflow — the browser gap-fill covers the delta and the
-        # next real push deploys everything.
