@@ -9,9 +9,10 @@ scannable, console-styled UI that remembers what you've already seen.
 > Take a product name → understand what it does → click out to the project
 > website if interested.
 
-New Brew collapses this into one screen: scan the timeline, expand a row to
-read what the thing is, follow the homepage link. The `brew.sh` page is one
-click away for anything that deserves a deeper look.
+New Brew collapses this into one screen: scan the timeline, open a row's
+card in the details sidebar to read what the thing is, follow the homepage
+link. The `brew.sh` page is one click away for anything that deserves a
+deeper look.
 
 ## Architecture (hybrid data model)
 
@@ -183,7 +184,7 @@ scripts/
   build-data.mjs   # the Action's generator
 src/routes/+page.svelte        # the whole app (single route)
 src/lib/data.svelte.ts         # changes.json fetch + gap-fill + merge + localStorage cache
-src/lib/state.svelte.ts        # localStorage: last visit, filters, expansion
+src/lib/state.svelte.ts        # localStorage: last visit, filters, since mode; session pins
 src/lib/components/            # Row.svelte, PkgCard.svelte, FilterBar.svelte, SincePicker.svelte
 static/data/changes.json       # generated; untracked — synced from gh-pages via npm run sync:data
 ```
