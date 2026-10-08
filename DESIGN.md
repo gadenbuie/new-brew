@@ -123,11 +123,16 @@ that revisiting between scheduled runs costs **zero API requests**:
   right that always shows a card for the current selection (moves with j/k
   or a row click). `p` (or the card's [pin] button) pins a row so its card
   stays in the sidebar for the session — a scan-and-pin review queue in pin
-  order, with the current selection's card always on top unless that row is
-  already pinned. Cards fetch rich metadata (versions, license, deps /
-  artifacts & requirements, caveats, deprecation) from formulae.brew.sh on
-  demand, session-cached. Below ~1080px the sidebar becomes an offcanvas
-  stack opened with enter/space or a row tap. Pins are session-only.
+  order. Pinning never reorders anything: the card you're looking at stays
+  exactly where it is and only its pin state changes; it shows once (as the
+  current card, on top) until the selection moves on, at which point it
+  settles into the pinned stack in pin order. Cards fetch rich metadata
+  (versions, license, deps / artifacts & requirements, caveats, deprecation)
+  from formulae.brew.sh on demand — session-cached, with a synchronous peek
+  so revisits render instantly — and `o`/`O` open the selected row's
+  homepage / brew.sh page in a new tab. Below ~1080px the sidebar becomes
+  an offcanvas stack opened with enter/space or a row tap (selection alone
+  never yanks focus). Pins are session-only.
 - **First visit:** default window = 7 days, clearly labeled.
 - **Long absence (> retention):** window silently capped to available
   retention (60 days), with a note.

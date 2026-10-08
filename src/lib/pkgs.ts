@@ -46,18 +46,33 @@ function pkgUrl(t: PkgType, n: string): string {
 }
 
 /** Promise-level cache: in-flight requests dedupe and successes persist per session. */
-const cache = new Map<string, Promise<PkgDetail>>();
+interface CacheEntry {
+	promise: Promise<PkgDetail>;
+	/** set once resolved — lets card re-renders skip the fetching state */
+	value?: PkgDetail;
+}
+const cache = new Map<string, CacheEntry>();
 
 export function fetchPkg(t: PkgType, n: string): Promise<PkgDetail> {
 	const key = `${t}/${n}`;
 	const hit = cache.get(key);
-	if (hit) return hit;
-	const p = load(t, n).catch((err) => {
-		cache.delete(key); // failed lookups are retryable
-		throw err;
-	});
-	cache.set(key, p);
-	return p;
+	if (hit) return hit.promise;
+	const entry: CacheEntry = { promise: load(t, n) };
+	cache.set(key, entry);
+	entry.promise.then(
+		(d) => {
+			entry.value = d;
+		},
+		() => {
+			cache.delete(key); // failed lookups are retryable
+		}
+	);
+	return entry.promise;
+}
+
+/** Synchronous peek at an already-resolved detail — no request, no flicker. */
+export function cachedPkg(t: PkgType, n: string): PkgDetail | undefined {
+	return cache.get(`${t}/${n}`)?.value;
 }
 
 async function load(t: PkgType, n: string): Promise<PkgDetail> {

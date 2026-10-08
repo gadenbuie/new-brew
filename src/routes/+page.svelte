@@ -4,6 +4,7 @@
 	import Row from '#lib/components/Row.svelte';
 	import SincePicker from '#lib/components/SincePicker.svelte';
 	import { data } from '#lib/data.svelte.ts';
+	import { brewPageUrl } from '#lib/pkgs.ts';
 	import { ui } from '#lib/state.svelte.ts';
 	import type { Filter, Item } from '#lib/types.ts';
 	import { isoDate, type SinceMode } from '#lib/window.ts';
@@ -104,6 +105,11 @@
 	/** The row the sidebar's current card follows. */
 	const current = $derived(visible[ui.selected] ?? null);
 
+	/** Pinned cards other than the current row's (which already shows first). */
+	const pinnedCards = $derived(
+		current ? ui.pinned.filter((p) => keyOf(p) !== keyOf(current)) : ui.pinned
+	);
+
 	function scrollToSelection(): void {
 		const item = visible[ui.selected];
 		if (!item) return;
@@ -152,6 +158,19 @@
 		if ((e.key === 'p' || e.key === 'P') && visible[ui.selected]) {
 			e.preventDefault();
 			ui.togglePin(visible[ui.selected]);
+			return;
+		}
+
+		// `o` opens the selected row's homepage in a new tab (falling back to
+		// its brew.sh page when the dataset has no URL for it); `O` goes
+		// straight to brew.sh.
+		if (e.key === 'o' || e.key === 'O') {
+			const item = visible[ui.selected];
+			if (item) {
+				e.preventDefault();
+				const url = e.key === 'o' ? item.url || brewPageUrl(item.t, item.n) : brewPageUrl(item.t, item.n);
+				window.open(url, '_blank', 'noopener');
+			}
 			return;
 		}
 
@@ -274,7 +293,7 @@
 	{/if}
 
 	<p class="footer">
-		j/k move · enter details · p pin/unpin · / filter · esc close · data: homebrew-core +
+		j/k move · p pin/unpin · o homepage · O brew.sh · / filter · esc close · data: homebrew-core +
 		homebrew-cask git history, refreshed 3× daily
 	</p>
 </div>
@@ -284,10 +303,17 @@
 		<div class="sidebar-head">
 			details{#if ui.pinned.length} · {ui.pinned.length} pinned{/if}
 		</div>
-		{#if current && !ui.isPinned(current)}
-			<PkgCard item={current} current pinned={false} onpin={() => ui.togglePin(current)} />
+		{#if current}
+			<!-- the current card stays in place when pinned — pinning only changes
+			 the card's state, never the order -->
+			<PkgCard
+				item={current}
+				current
+				pinned={ui.isPinned(current)}
+				onpin={() => ui.togglePin(current)}
+			/>
 		{/if}
-		{#each ui.pinned as p (p.t + '/' + p.n)}
+		{#each pinnedCards as p (p.t + '/' + p.n)}
 			<PkgCard item={p} pinned onpin={() => ui.togglePin(p)} />
 		{/each}
 		{#if !current && ui.pinned.length === 0}

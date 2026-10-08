@@ -1,6 +1,6 @@
 <script lang="ts">
 	import CopyBtn from './CopyBtn.svelte';
-	import { brewPageUrl, fetchPkg, type PkgDetail } from '#lib/pkgs.ts';
+	import { brewPageUrl, cachedPkg, fetchPkg, type PkgDetail } from '#lib/pkgs.ts';
 	import type { Item } from '#lib/types.ts';
 
 	let {
@@ -22,17 +22,26 @@
 	let error = $state(false);
 
 	// Fetch (via the session cache) whenever the card switches packages.
-	// Debounced so scanning with j/k doesn't machine-gun the API — the fetch
-	// only fires once the selection settles.
+	// Already-viewed packages render synchronously from the cache — no
+	// "fetching…" flicker on revisit. Fresh ones debounce 120ms so scanning
+	// with j/k doesn't machine-gun the API.
 	let timer: ReturnType<typeof setTimeout> | undefined;
+	let dead = false;
 	$effect(() => {
 		void item.t;
 		void item.n;
 		clearTimeout(timer);
-		loading = true;
+		const hit = cachedPkg(item.t, item.n);
+		if (hit) {
+			dead = true; // any in-flight fetch for the previous package is moot
+			detail = hit;
+			loading = false;
+			error = false;
+			return;
+		}
+		dead = false;loading = true;
 		error = false;
 		detail = null;
-		let dead = false;
 		timer = setTimeout(() => {
 			fetchPkg(item.t, item.n)
 				.then((d) => {

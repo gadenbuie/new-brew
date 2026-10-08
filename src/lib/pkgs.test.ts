@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { brewPageUrl, fetchPkg } from './pkgs';
+import { brewPageUrl, cachedPkg, fetchPkg } from './pkgs';
 
 const realFetch = globalThis.fetch;
 
@@ -110,6 +110,20 @@ describe('fetchPkg', () => {
 		await fetchPkg('f', 'cached-pkg');
 		await fetchPkg('f', 'cached-pkg');
 		expect(f).toHaveBeenCalledTimes(1);
+	});
+
+	it('cachedPkg peeks at resolved details synchronously (no fetching flicker)', async () => {
+		const f = stubFetch({ name: 'peek', token: undefined, desc: '' });
+		globalThis.fetch = f;
+		expect(cachedPkg('f', 'peek')).toBeUndefined(); // not yet — never fetched
+		await fetchPkg('f', 'peek');
+		expect(cachedPkg('f', 'peek')).toMatchObject({ name: 'peek' });
+		// in-flight: peek stays undefined until resolved (value, not promise)
+		const p = fetchPkg('f', 'peek2');
+		expect(cachedPkg('f', 'peek2')).toBeUndefined();
+		await p;
+		// (the stub always answers with name 'peek' regardless of URL)
+		expect(cachedPkg('f', 'peek2')).toMatchObject({ name: 'peek' });
 	});
 
 	it('failed lookups are retryable (not cached)', async () => {
