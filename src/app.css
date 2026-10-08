@@ -484,6 +484,16 @@ input {
 	scrollbar-color: var(--border) transparent;
 }
 
+/* theme toggle wipe: the View Transitions snapshot pair replaces the
+ * default cross-fade with nothing here — the top-to-bottom reveal is
+ * authored in JS on ::view-transition-new(root) (state.svelte.ts), with
+ * the old snapshot static underneath until the sweep passes. */
+::view-transition-old(root),
+::view-transition-new(root) {
+	animation: none;
+	mix-blend-mode: normal;
+}
+
 /* -------------------------------------------------------- since picker */
 
 .since-wrap {

@@ -222,7 +222,7 @@ class UIState {
 	setTheme(mode: ThemeMode): void {
 		this.theme = mode;
 		this.#persistTheme();
-		this.#applyTheme();
+		this.#applyThemeWiped();
 	}
 
 	/** The stored key is exactly "a choice that contradicts the system" —
@@ -237,6 +237,39 @@ class UIState {
 		} catch {
 			/* fine */
 		}
+	}
+
+	/** Apply the theme with the toggle's authored moment: the new theme
+	 * wipes in top-to-bottom like a monitor refresh (View Transitions
+	 * snapshot pair, default cross-fade disabled in app.css). Falls back to
+	 * an instant apply where the API is missing or motion is reduced. */
+	#applyThemeWiped(): void {
+		if (!browser) return;
+		if (
+			typeof document.startViewTransition !== 'function' ||
+			window.matchMedia('(prefers-reduced-motion: reduce)').matches
+		) {
+			this.#applyTheme();
+			return;
+		}
+		const transition = document.startViewTransition(() => this.#applyTheme());
+		void transition.ready
+			.then(() => {
+				// a monitor refresh: the beam starts at once (1.4× linear — an
+				// instant start acknowledges the click), holds a steady sweep
+				// through the middle, and only eases into the bottom edge
+				document.documentElement.animate(
+					{ clipPath: ['inset(0 0 100% 0)', 'inset(0 0 0% 0)'] },
+					{
+						duration: 550,
+						easing: 'cubic-bezier(0.4, 0.55, 0.65, 1)',
+						pseudoElement: '::view-transition-new(root)'
+					}
+				);
+			})
+			.catch(() => {
+				/* skipped or aborted (rapid toggling) — the theme still applied */
+			});
 	}
 
 	/** OS preference changed: re-evaluate the contract. A choice that now
