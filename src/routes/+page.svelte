@@ -407,7 +407,7 @@
 	</div>
 
 	<p class="footer">
-		<span class="kbd-hints">j/k move · p pin/unpin · o homepage · O brew.sh · ⌘⇧O pinned · / filter · esc close · </span><span class="touch-hints">tap a row for details · pin from its card · </span><a href="https://github.com/gadenbuie/new-brew">source</a>
+		<span class="kbd-hints">j/k move · p pin/unpin · o homepage · O brew.sh · ⌘⇧O pinned · / filter · esc clear · </span><span class="touch-hints">tap a row for details · pin from its card · </span><a href="https://github.com/gadenbuie/new-brew">source</a>
 	</p>
 </div>
 
