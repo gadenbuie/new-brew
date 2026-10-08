@@ -296,8 +296,7 @@
 	</div>
 
 	<p class="footer">
-		j/k move · p pin/unpin · o homepage · O brew.sh · / filter · esc close · data: homebrew-core +
-		homebrew-cask git history, refreshed 3× daily
+		j/k move · p pin/unpin · o homepage · O brew.sh · / filter · esc close · <a href="https://github.com/gadenbuie/new-brew">source</a>
 	</p>
 </div>
 

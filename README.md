@@ -21,12 +21,15 @@ npm install
 npm run dev
 ```
 
-Production build and local preview:
+Production build (the static site, also used by the deploy workflow):
 
 ```sh
 npm run build
-npm run preview
 ```
+
+`npm run dev` (or `npm run preview`, an alias) serves the app with live
+reload while editing. To eyeball the real built output, run `npm run build`
+and serve `build/` with any static file server.
 
 Unit tests:
 
