@@ -72,37 +72,49 @@ describe('collectEvents', () => {
 		expect(progress.reached).toBeNull();
 	});
 
-	it('chunks at 75 commits when the gap is larger', async () => {
+	it('chunks when the response would be truncated (files at the 300 cap or commits beyond 250)', async () => {
 		const { shas, commits } = chain(160); // base..head inclusive = 160 commits
 		const base = shas[0];
 		const head = shas[159];
+		// 300 padding files outside the tap dir signal a truncated file list
+		const padded = Array.from({ length: 300 }, (_, i) => ({
+			status: 'modified',
+			filename: `outside/${i}.rb`
+		}));
 		const { gh, calls } = fakeGh({
-			// top-level compare — too big for one chunk; anchor lands on shas[84]
+			// top compare — files truncated; BFS anchor lands on shas[85]
 			[`/repos/Homebrew/homebrew-core/compare/${base}...${head}`]: {
 				status: 'ahead',
-				commits: [...commits.values()]
+				ahead_by: 300,
+				commits: [...commits.values()],
+				files: padded
 			},
-			// chunk 1: (shas[84], head]
-			[`/repos/Homebrew/homebrew-core/compare/${shas[84]}...${head}`]: {
+			// chunk 1: (shas[85], head] — fits and is complete
+			[`/repos/Homebrew/homebrew-core/compare/${shas[85]}...${head}`]: {
 				status: 'ahead',
+				ahead_by: 74,
 				commits: [commits.get(head)!],
 				files: [{ status: 'added', filename: 'Formula/recent.rb' }]
 			},
-			// recursion: (base, shas[84]] still > 75 — anchor lands on shas[9]
-			[`/repos/Homebrew/homebrew-core/compare/${base}...${shas[84]}`]: {
+			// remainder: (base, shas[85]] still over the cap — BFS anchor shas[11]
+			[`/repos/Homebrew/homebrew-core/compare/${base}...${shas[85]}`]: {
 				status: 'ahead',
-				commits: [...commits.values()].slice(0, 85)
+				ahead_by: 300,
+				commits: [...commits.values()].slice(0, 86),
+				files: padded
 			},
-			// chunk 2: (shas[9], shas[84]]
-			[`/repos/Homebrew/homebrew-core/compare/${shas[9]}...${shas[84]}`]: {
+			// chunk 2: (shas[11], shas[85]]
+			[`/repos/Homebrew/homebrew-core/compare/${shas[11]}...${shas[85]}`]: {
 				status: 'ahead',
-				commits: [commits.get(shas[84])!],
+				ahead_by: 74,
+				commits: [commits.get(shas[85])!],
 				files: [{ status: 'modified', filename: 'Formula/mid.rb' }]
 			},
-			// recursion: (base, shas[9]] fits one chunk
-			[`/repos/Homebrew/homebrew-core/compare/${base}...${shas[9]}`]: {
+			// final: (base, shas[11]] fits one chunk
+			[`/repos/Homebrew/homebrew-core/compare/${base}...${shas[11]}`]: {
 				status: 'ahead',
-				commits: [...commits.values()].slice(0, 10),
+				ahead_by: 11,
+				commits: [...commits.values()].slice(0, 12),
 				files: [{ status: 'modified', filename: 'Formula/old.rb' }]
 			}
 		});
@@ -111,24 +123,31 @@ describe('collectEvents', () => {
 		await collectEvents(gh, core, base, head, events, progress);
 		expect(events.map((e) => e.n).sort()).toEqual(['mid', 'old', 'recent']);
 		expect(progress.reached).toBe(base);
-		expect(calls.length).toBe(5); // 2 range compares + 2 chunk compares + 1 leaf compare
+		expect(calls.length).toBe(5); // 3 range compares + 2 chunk compares
 	});
 
 	it('keeps collected events and progress when the budget dies mid-way', async () => {
 		const { shas, commits } = chain(160);
 		const base = shas[0];
 		const head = shas[159];
-		const budget = new Budget(2); // dies after the chunk compare
+		const padded = Array.from({ length: 300 }, (_, i) => ({
+			status: 'modified',
+			filename: `outside/${i}.rb`
+		}));
+		const budget = new Budget(2); // dies inside the remainder compare
 		const realGh = makeGh(budget);
 		let called = 0;
-		const gh = (async (path: string) => {
-			called++;
+		const gh = (async () => {
 			budget.take();
+			called++;
 			if (called === 1) {
-				return { status: 'ahead', commits: [...commits.values()] };
+				// top compare — truncated, chunk path taken
+				return { status: 'ahead', ahead_by: 300, commits: [...commits.values()], files: padded };
 			}
+			// chunk 1 (shas[85]...head) completes
 			return {
 				status: 'ahead',
+				ahead_by: 74,
 				commits: [commit(`x${called}`, null, '2026-10-08T14:00:00Z')],
 				files: [{ status: 'added', filename: 'Formula/recent.rb' }]
 			};
@@ -137,7 +156,7 @@ describe('collectEvents', () => {
 		const progress = { reached: null, diverged: false };
 		await expect(collectEvents(gh, core, base, head, events, progress)).rejects.toThrow(SyncAborted);
 		expect(events).toEqual([{ n: 'recent', t: 'f', k: 'n', d: '2026-10-08' }]);
-		expect(progress.reached).toBe(shas[84]); // resume point for the next visit
+		expect(progress.reached).toBe(shas[85]); // resume point for the next visit
 	});
 
 	it('falls back to the commit listing when the compare response is truncated (head missing)', async () => {
@@ -150,9 +169,10 @@ describe('collectEvents', () => {
 			Array.from({ length: from - to + 1 }, (_, i) => commits.get(shas[from - i])!);
 
 		const { gh, calls } = fakeGh({
-			// truncated: everything except head
+			// truncated: everything except head, and ahead_by beyond the cap
 			[`/repos/Homebrew/homebrew-core/compare/${base}...${head}`]: {
 				status: 'ahead',
+				ahead_by: 400,
 				commits: [...commits.values()].filter((c) => c.sha !== head)
 			},
 			// listing page 1: head..shas[61] (100 commits, none is base)
@@ -184,5 +204,28 @@ describe('collectEvents', () => {
 		expect(events.map((e) => e.n).sort()).toEqual(['middle', 'newest', 'oldest']);
 		expect(progress.reached).toBe(base);
 		expect(calls.length).toBe(6); // 1 compare + 2 listing pages + 3 chunk compares
+	});
+
+	it('takes a compare response as authoritative when commits and files are under the caps', async () => {
+		// merge-train topologies (homebrew-cask) put more commits in a range
+		// than a first-parent walk suggests — a complete file list means the
+		// whole range is covered in one request regardless.
+		const { shas, commits } = chain(103);
+		const base = shas[0];
+		const head = shas[102];
+		const { gh, calls } = fakeGh({
+			[`/repos/Homebrew/homebrew-core/compare/${base}...${head}`]: {
+				status: 'ahead',
+				ahead_by: 102,
+				commits: [...commits.values()],
+				files: [{ status: 'added', filename: 'Formula/one-shot.rb' }]
+			}
+		});
+		const events: GapEvent[] = [];
+		const progress = { reached: null, diverged: false };
+		await collectEvents(gh, core, base, head, events, progress);
+		expect(events).toEqual([{ n: 'one-shot', t: 'f', k: 'n', d: '2026-10-08' }]);
+		expect(progress.reached).toBe(base);
+		expect(calls).toHaveLength(1);
 	});
 });

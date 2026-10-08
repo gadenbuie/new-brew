@@ -20,7 +20,7 @@ export interface RepoCfg {
 	key: 'core' | 'cask';
 }
 
-/** Homebrew's taps. Both default to the `master` branch. */
+/** Homebrew's taps (default branch discovered via the API — cask uses `main`). */
 export const REPOS: readonly RepoCfg[] = [
 	{ repo: 'Homebrew/homebrew-core', dir: 'Formula/', type: 'f', key: 'core' },
 	{ repo: 'Homebrew/homebrew-cask', dir: 'Casks/', type: 'c', key: 'cask' }
@@ -38,7 +38,10 @@ export class SyncAborted extends Error {}
  */
 export class Budget {
 	used = 0;
-	constructor(public readonly max: number) {}
+	max: number;
+	constructor(max: number) {
+		this.max = max;
+	}
 	take(): void {
 		if (this.used >= this.max) throw new SyncAborted('request budget exhausted');
 		this.used++;
@@ -162,35 +165,64 @@ export async function collectEvents(
 	const commits = cmp.commits ?? [];
 	if (commits.length === 0) return;
 
-	if (commits.length <= 75) {
+	// A compare response is authoritative when both caps are safely under:
+	// commits ≤ 250 (nothing truncated) and files < 300 (the file list is
+	// complete — it may cover far more than 75 commits, since merge commits
+	// pull branch history into the range too; more coverage per request is
+	// a win, not a risk).
+	const ahead = typeof cmp.ahead_by === 'number' ? cmp.ahead_by : commits.length;
+	const filesComplete = !cmp.files || cmp.files.length < 300;
+	if (filesComplete && ahead <= 250) {
 		out.push(...filesToEvents(cmp.files, cfg, newestCommitDate(commits)));
 		progress.reached = base; // whole range processed
 		return;
 	}
 
-	// Walk the parent chain from `head` to find the 75th ancestor as an anchor.
+	// Chunk: anchor ≈75 commits back from head. BFS over ALL parents — merge
+	// histories (homebrew-cask is a merge train) only reach branch commits
+	// through second parents, so a first-parent walk under-counts there.
 	const bySha = new Map(commits.map((c) => [c.sha, c]));
-	let steps = 0;
-	let cur: GhCommit | undefined = bySha.get(head);
-	while (cur && steps < 75) {
-		steps++;
-		cur = bySha.get(cur.parents[0]?.sha ?? '');
-	}
-	if (!cur || steps < 75) {
-		// `head` isn't in the response (or the chain breaks): the gap exceeded the
-		// compare API's 250-commit response cap. Page the commit listing instead.
+	const anchor = bfsAnchor(bySha, head, 75);
+	if (!anchor) {
+		// `head` isn't in the response (or the set is too small): the gap
+		// exceeded the compare API's 250-commit response cap. Page the commit
+		// listing for anchors instead.
 		await collectEventsViaListing(gh, cfg, base, head, out, progress);
 		return;
 	}
 
-	const anchor = cur.sha;
-	const chunk = await gh<GhCompare>(`/repos/${cfg.repo}/compare/${anchor}...${head}`);
-	if (chunk.status === 'ahead' && chunk.commits?.length) {
-		out.push(...filesToEvents(chunk.files, cfg, newestCommitDate(chunk.commits)));
-	}
-	progress.reached = anchor; // everything above `anchor` is processed
-	// Recurse for the remainder between `base` and the anchor.
+	// Process the chunk first (newest), then the remainder recursively.
+	await collectEvents(gh, cfg, anchor, head, out, progress);
 	await collectEvents(gh, cfg, base, anchor, out, progress);
+}
+
+/**
+ * The `target`-th commit from `head` in breadth-first order over all
+ * parents — a chunk anchor close to head regardless of merge topology.
+ * Returns null if `head` isn't in the set or fewer than `target` commits are
+ * reachable within it.
+ */
+function bfsAnchor(bySha: Map<string, GhCommit>, head: string, target: number): string | null {
+	const start = bySha.get(head);
+	if (!start) return null;
+	const seen = new Set<string>([head]);
+	const queue: GhCommit[] = [start];
+	let found = 0;
+	while (queue.length) {
+		const c = queue.shift()!;
+		found++;
+		if (found === target) return c.sha;
+		for (const p of c.parents) {
+			if (!seen.has(p.sha)) {
+				const pc = bySha.get(p.sha);
+				if (pc) {
+						seen.add(p.sha);
+						queue.push(pc);
+					}
+			}
+		}
+	}
+	return null;
 }
 
 /** Fallback for gaps larger than the compare API's 250-commit response cap. */
