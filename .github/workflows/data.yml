@@ -1,0 +1,44 @@
+name: data
+
+on:
+  schedule:
+    # US work hours: 8am ET, 12:30pm ET, 5pm ET. Cron ignores DST, so these
+    # drift an hour earlier in winter — acceptable per DESIGN.md.
+    - cron: "0 12 * * *"
+    - cron: "30 16 * * *"
+    - cron: "0 21 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data
+  cancel-in-progress: false
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Run data generator
+        run: node scripts/build-data.mjs
+        timeout-minutes: 15
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add static/data/changes.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(data): rebuild changes.json [skip ci]"
+            git push
+          fi
+        # [skip ci] is intentional: bot data commits must NOT trigger the
+        # deploy workflow — the browser gap-fill covers the delta and the
+        # next real push deploys everything.
