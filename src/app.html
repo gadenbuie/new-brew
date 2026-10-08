@@ -4,13 +4,31 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
-		<meta name="color-scheme" content="dark" />
+		<meta name="color-scheme" content="dark light" />
 		<style>
-			/* avoid a white flash before app.css hydrates */
+			/* avoid a flash before app.css loads — mirrors the theme tokens */
 			html {
 				background: #0b0e14;
 			}
+
+			html[data-theme='light'] {
+				background: #f6f7f9;
+			}
 		</style>
+		<script>
+			// apply the persisted theme (or the OS preference) before first paint
+			(function () {
+				try {
+					var mode = localStorage.getItem('newbrew:theme') || 'system';
+					var light =
+						mode === 'light' ||
+						(mode !== 'dark' && matchMedia('(prefers-color-scheme: light)').matches);
+					document.documentElement.dataset.theme = light ? 'light' : 'dark';
+				} catch (e) {
+					document.documentElement.dataset.theme = 'dark';
+				}
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

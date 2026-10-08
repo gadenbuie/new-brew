@@ -61,5 +61,5 @@ export interface CacheRecord {
 	items: Item[];
 }
 
-/** Scope filter chips. */
-export type Filter = 'all' | 'casks' | 'formulae' | 'new' | 'updated';
+/** Scope-filter chips: each group toggles independently; an empty group passes both. */
+export type Filter = 'casks' | 'formulae' | 'new' | 'updated';

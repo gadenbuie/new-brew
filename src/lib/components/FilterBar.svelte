@@ -1,36 +1,55 @@
 <script lang="ts">
-	import type { Filter } from '#lib/types.ts';
+	import type { Filter, Kind, PkgType } from '#lib/types.ts';
 
 	let {
-		filter,
+		activeTypes,
+		activeKinds,
 		counts,
-		onfilter,
+		ontoggletype,
+		ontogglekind,
 		oncaughtup
 	}: {
-		filter: Filter;
+		/** empty = both types pass */
+		activeTypes: PkgType[];
+		/** empty = both kinds pass */
+		activeKinds: Kind[];
 		counts: Record<Filter, number>;
-		onfilter: (f: Filter) => void;
+		ontoggletype: (t: PkgType) => void;
+		ontogglekind: (k: Kind) => void;
 		oncaughtup: () => void;
 	} = $props();
 
-	const chips: { id: Filter; label: string }[] = [
-		{ id: 'all', label: 'all' },
-		{ id: 'casks', label: 'casks' },
-		{ id: 'formulae', label: 'formulae' },
-		{ id: 'new', label: 'new' },
-		{ id: 'updated', label: 'updated' }
+	const typeChips: { t: PkgType; label: string }[] = [
+		{ t: 'c', label: 'casks' },
+		{ t: 'f', label: 'formulae' }
+	];
+	const kindChips: { k: Kind; label: string }[] = [
+		{ k: 'n', label: 'new' },
+		{ k: 'u', label: 'updated' }
 	];
 </script>
 
+<!-- Each group toggles independently: activating one member excludes the
+     other until it's also activated; an all-unset group passes both. -->
 <div class="filterbar" role="toolbar" aria-label="filters">
-	{#each chips as c (c.id)}
+	{#each typeChips as c (c.t)}
 		<button
 			class="chip"
-			class:active={filter === c.id}
-			aria-pressed={filter === c.id}
-			onclick={() => onfilter(c.id)}
+			class:active={activeTypes.includes(c.t)}
+			aria-pressed={activeTypes.includes(c.t)}
+			onclick={() => ontoggletype(c.t)}
 		>
-			[{c.label}]{#if c.id !== filter}&nbsp;<span class="cnt">{counts[c.id]}</span>{/if}
+			[{c.label}]&nbsp;<span class="cnt">{counts[c.t === 'c' ? 'casks' : 'formulae']}</span>
+		</button>
+	{/each}
+	{#each kindChips as c (c.k)}
+		<button
+			class="chip"
+			class:active={activeKinds.includes(c.k)}
+			aria-pressed={activeKinds.includes(c.k)}
+			onclick={() => ontogglekind(c.k)}
+		>
+			[{c.label}]&nbsp;<span class="cnt">{counts[c.k === 'n' ? 'new' : 'updated']}</span>
 		</button>
 	{/each}
 

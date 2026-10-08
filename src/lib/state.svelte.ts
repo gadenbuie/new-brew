@@ -1,5 +1,5 @@
 import { browser } from '$app/env';
-import type { Filter, Item } from './types';
+import type { Filter, Item, Kind, PkgType } from './types';
 import { presetWindow, isoDate, type SinceMode } from './window';
 
 /**
@@ -13,8 +13,41 @@ import { presetWindow, isoDate, type SinceMode } from './window';
 
 const LAST_VISIT_KEY = 'newbrew:lastVisit';
 const FILTER_KEY = 'newbrew:filter';
+const THEME_KEY = 'newbrew:theme';
 
-const FILTERS: readonly Filter[] = ['all', 'casks', 'formulae', 'new', 'updated'];
+/** Light/dark/system theme preference (persists; `system` follows the OS). */
+export type ThemeMode = 'dark' | 'light' | 'system';
+
+function readTheme(): ThemeMode {
+	if (!browser) return 'system';
+	try {
+		const saved = localStorage.getItem(THEME_KEY);
+		if (saved === 'dark' || saved === 'light') return saved;
+	} catch {
+		/* fine */
+	}
+	return 'system';
+}
+
+/** Persisted chip state: { types: PkgType[], kinds: Kind[] } — empty = both. */
+function readChips(): { types: PkgType[]; kinds: Kind[] } {
+	if (!browser) return { types: [], kinds: [] };
+	try {
+		const raw = localStorage.getItem(FILTER_KEY);
+		if (!raw) return { types: [], kinds: [] };
+		const parsed = JSON.parse(raw);
+		const types = Array.isArray(parsed?.types)
+			? parsed.types.filter((t: unknown) => t === 'f' || t === 'c')
+			: [];
+		const kinds = Array.isArray(parsed?.kinds)
+			? parsed.kinds.filter((k: unknown) => k === 'n' || k === 'u')
+			: [];
+		return { types, kinds };
+	} catch {
+		// legacy single-chip values or corrupt JSON — start fresh
+		return { types: [], kinds: [] };
+	}
+}
 
 function readLastVisit(): number | null {
 	if (!browser) return null;
@@ -30,7 +63,11 @@ function keyOf(item: Item): string {
 }
 
 class UIState {
-	filter: Filter = $state('all');
+	/** active type chips (empty = both pass) — choosing one excludes the other
+	 * until it's also activated, per the group interaction */
+	activeTypes: PkgType[] = $state([]);
+	/** active kind chips (empty = both pass) */
+	activeKinds: Kind[] = $state([]);
 	query = $state('');
 	/** keyboard-selected index into the visible list */
 	selected = $state(0);
@@ -43,6 +80,9 @@ class UIState {
 	sinceMode: SinceMode = $state('auto');
 	sinceCustom = $state('');
 	pickerOpen = $state(false);
+
+	/** Light/dark/system — persisted, unlike the session-only bits above. */
+	theme: ThemeMode = $state('system');
 
 	/**
 	 * Pinned review cards, in pin order (a scan-and-pin reading queue).
@@ -60,12 +100,16 @@ class UIState {
 		if (!browser || this.#initialized) return;
 		this.#initialized = true;
 
-		try {
-			const saved = localStorage.getItem(FILTER_KEY);
-			if (saved && (FILTERS as readonly string[]).includes(saved)) this.filter = saved as Filter;
-		} catch {
-			/* storage disabled — default filter is fine */
-		}
+		const chips = readChips();
+		this.activeTypes = chips.types;
+		this.activeKinds = chips.kinds;
+
+		this.theme = readTheme();
+		this.#applyTheme();
+		// while in `system` mode, follow the OS preference as it changes
+		window
+			.matchMedia('(prefers-color-scheme: light)')
+			.addEventListener('change', () => this.#applyTheme());
 
 		const stamp = () => this.#stampVisit();
 		window.addEventListener('pagehide', stamp);
@@ -92,11 +136,31 @@ class UIState {
 		this.capped = w.capped;
 	}
 
-	setFilter(f: Filter): void {
-		this.filter = f;
+	/** Toggle a type chip: activating `c` excludes `f` until `f` is also
+	 * activated (and vice-versa); an empty set passes both. */
+	toggleType(t: PkgType): void {
+		const i = this.activeTypes.indexOf(t);
+		if (i >= 0) this.activeTypes.splice(i, 1);
+		else this.activeTypes.push(t);
 		this.selected = 0;
+		this.#persistChips();
+	}
+
+	/** Same group interaction for the new/updated kind chips. */
+	toggleKind(k: Kind): void {
+		const i = this.activeKinds.indexOf(k);
+		if (i >= 0) this.activeKinds.splice(i, 1);
+		else this.activeKinds.push(k);
+		this.selected = 0;
+		this.#persistChips();
+	}
+
+	#persistChips(): void {
 		try {
-			localStorage.setItem(FILTER_KEY, f);
+			localStorage.setItem(
+				FILTER_KEY,
+				JSON.stringify({ types: this.activeTypes, kinds: this.activeKinds })
+			);
 		} catch {
 			/* fine */
 		}
@@ -133,6 +197,32 @@ class UIState {
 	/** Window start as a `YYYY-MM-DD` comparable to item dates. */
 	get windowStartIso(): string {
 		return this.windowStart ? isoDate(this.windowStart) : '';
+	}
+
+	/** Cycle dark → light → system → dark and persist. */
+	cycleTheme(): void {
+		const next: ThemeMode =
+			this.theme === 'dark' ? 'light' : this.theme === 'light' ? 'system' : 'dark';
+		this.setTheme(next);
+	}
+
+	setTheme(mode: ThemeMode): void {
+		this.theme = mode;
+		try {
+			localStorage.setItem(THEME_KEY, mode);
+		} catch {
+			/* fine */
+		}
+		this.#applyTheme();
+	}
+
+	#applyTheme(): void {
+		if (!browser) return;
+		const light =
+			this.theme === 'light' ||
+			(this.theme === 'system' &&
+				window.matchMedia('(prefers-color-scheme: light)').matches);
+		document.documentElement.dataset.theme = light ? 'light' : 'dark';
 	}
 
 	#stampVisit(): void {

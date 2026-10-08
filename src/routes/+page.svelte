@@ -36,7 +36,6 @@
 			(it) => !q || it.n.toLowerCase().includes(q) || it.desc.toLowerCase().includes(q)
 		);
 		return {
-			all: base.length,
 			casks: base.filter((i) => i.t === 'c').length,
 			formulae: base.filter((i) => i.t === 'f').length,
 			new: base.filter((i) => i.k === 'n').length,
@@ -44,17 +43,17 @@
 		} satisfies Record<Filter, number>;
 	});
 
-	/** The visible timeline: window + chip filter + search. */
+	/** The visible timeline: window + chip toggles + search. Empty chip groups
+	 * pass both members; an activated chip excludes its group partner until
+	 * that partner is activated too. */
 	const visible = $derived.by(() => {
 		const q = ui.query.trim().toLowerCase();
 		return inWindow.filter((it) => {
 			if (q && !it.n.toLowerCase().includes(q) && !it.desc.toLowerCase().includes(q)) {
 				return false;
 			}
-			if (ui.filter === 'casks' && it.t !== 'c') return false;
-			if (ui.filter === 'formulae' && it.t !== 'f') return false;
-			if (ui.filter === 'new' && it.k !== 'n') return false;
-			if (ui.filter === 'updated' && it.k !== 'u') return false;
+			if (ui.activeTypes.length && !ui.activeTypes.includes(it.t)) return false;
+			if (ui.activeKinds.length && !ui.activeKinds.includes(it.k)) return false;
 			return true;
 		});
 	});
@@ -248,6 +247,13 @@
 			/> · {visible.length}
 			{visible.length === 1 ? 'package' : 'packages'}{#if updatedLabel} · updated {updatedLabel}{/if}
 		</span>
+		<button
+			class="theme-toggle"
+			onclick={() => ui.cycleTheme()}
+			title="theme — cycles light / dark / system"
+		>
+			[{ui.theme}]
+		</button>
 	</header>
 	{#if ui.sinceMode === 'auto' && ui.firstVisit}
 		<p class="notes">first visit — showing the last 7 days. press <b>⌂ caught up</b> when you're done.</p>
@@ -264,9 +270,11 @@
 	<div class="rule" aria-hidden="true">{rule}</div>
 
 	<FilterBar
-		filter={ui.filter}
+		activeTypes={ui.activeTypes}
+		activeKinds={ui.activeKinds}
 		{counts}
-		onfilter={(f) => ui.setFilter(f)}
+		ontoggletype={(t) => ui.toggleType(t)}
+		ontogglekind={(k) => ui.toggleKind(k)}
 		oncaughtup={() => ui.markCaughtUp(data.retentionDays)}
 	/>
 	<input

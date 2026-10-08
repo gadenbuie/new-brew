@@ -110,7 +110,14 @@ that revisiting between scheduled runs costs **zero API requests**:
 
 ## Features
 
-- **Scope:** both formulae and casks, with filter chips to narrow.
+- **Scope:** both formulae and casks. Four independent chip toggles —
+  casks/formulae and new/updated — defaulting to all-unset (everything
+  passes). Within each group, activating one member excludes the other
+  until it's also activated; an empty group passes both. Chips persist.
+- **Theme:** dark by default TUI palette with a light counterpart; a
+  `[system]` toggle in the title row cycles light / dark / system.
+  The choice persists and follows the OS while in system mode (applied
+  pre-paint via an inline script to avoid flashes).
 - **Seen tracking:** last-visit timestamp in localStorage. The window is
   `max(last visit, 7 days ago)` on load; the timestamp updates when you
   leave (or press a "caught up" / "mark seen" button — decide in UI polish).
