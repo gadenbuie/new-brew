@@ -130,7 +130,8 @@ that revisiting between scheduled runs costs **zero API requests**:
   (versions, license, deps / artifacts & requirements, caveats, deprecation)
   from formulae.brew.sh on demand — session-cached, with a synchronous peek
   so revisits render instantly — and `o`/`O` open the selected row's
-  homepage / brew.sh page in a new tab. Below ~1080px the sidebar becomes
+  homepage / brew.sh page in a new tab; `⌘/ctrl + shift + O` opens every
+  pinned row at once (homepage first, brew.sh as fallback). Below ~1080px the sidebar becomes
   an offcanvas stack opened with enter/space or a row tap (selection alone
   never yanks focus). Pins are session-only.
 - **First visit:** default window = 7 days, clearly labeled.

@@ -163,7 +163,16 @@
 
 		// `o` opens the selected row's homepage in a new tab (falling back to
 		// its brew.sh page when the dataset has no URL for it); `O` goes
-		// straight to brew.sh.
+		// straight to brew.sh. `⌘/ctrl + shift + O` opens every pinned row at
+		// once (homepage first, brew.sh as fallback) — checked before the plain
+		// `o`/`O` branch, which would otherwise match the same key.
+		if (e.key === 'O' && (e.metaKey || e.ctrlKey)) {
+			e.preventDefault();
+			for (const item of ui.pinned) {
+				window.open(item.url || brewPageUrl(item.t, item.n), '_blank', 'noopener');
+			}
+			return;
+		}
 		if (e.key === 'o' || e.key === 'O') {
 			const item = visible[ui.selected];
 			if (item) {
@@ -296,7 +305,7 @@
 	</div>
 
 	<p class="footer">
-		j/k move · p pin/unpin · o homepage · O brew.sh · / filter · esc close · <a href="https://github.com/gadenbuie/new-brew">source</a>
+		j/k move · p pin/unpin · o homepage · O brew.sh · ⌘⇧O pinned · / filter · esc close · <a href="https://github.com/gadenbuie/new-brew">source</a>
 	</p>
 </div>
 
