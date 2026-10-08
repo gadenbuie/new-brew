@@ -331,11 +331,16 @@
 		<div class="sidebar-head">
 			details{#if ui.pinned.length} · {ui.pinned.length} pinned{/if}
 			<span class="spacer"></span>
-			{#if ui.pinned.length}
-				<button class="open-all" onclick={openPinned} title="⌘⇧O — open every pinned page in a new tab">
-					[open all]
-				</button>
-			{/if}
+			<!-- always rendered (hidden while empty) so the first pin never shifts
+			 the header — and every card under it — by the button's height -->
+			<button
+				class="open-all"
+				class:off={!ui.pinned.length}
+				onclick={openPinned}
+				title="⌘⇧O — open every pinned page in a new tab"
+			>
+				[open all]
+			</button>
 			<button class="close" onclick={() => (ui.offcanvasOpen = false)} aria-label="close details">
 				[x]
 			</button>

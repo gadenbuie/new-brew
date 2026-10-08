@@ -640,6 +640,14 @@ input {
 	font-size: 0.7rem;
 }
 
+/* space reserved while empty — keeps the header (and the cards below it)
+ * perfectly still as the first pin lands; visibility also removes it from
+ * the tab order and the accessibility tree */
+.sidebar-head .open-all.off {
+	visibility: hidden;
+	pointer-events: none;
+}
+
 .sidebar-head .open-all:hover {
 	color: var(--fg);
 }
