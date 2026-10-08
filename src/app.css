@@ -517,9 +517,23 @@ input {
 }
 
 .sidebar-head {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
 	color: var(--faint);
 	font-size: 0.7rem;
 	padding: 0 0.1rem;
+}
+
+.sidebar-head .open-all {
+	margin-left: auto;
+	color: var(--dim);
+	padding: 0.05rem 0.1rem;
+	font-size: 0.7rem;
+}
+
+.sidebar-head .open-all:hover {
+	color: var(--fg);
 }
 
 .sidebar-empty {

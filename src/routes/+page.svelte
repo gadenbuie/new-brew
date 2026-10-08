@@ -124,6 +124,13 @@
 	);
 	const sinceMax = $derived(isoDate(new Date()));
 
+	/** Open every pinned row's page (homepage first, brew.sh as fallback). */
+	function openPinned(): void {
+		for (const item of ui.pinned) {
+			window.open(item.url || brewPageUrl(item.t, item.n), '_blank', 'noopener');
+		}
+	}
+
 	function onkeydown(e: KeyboardEvent): void {
 		const target = e.target as HTMLElement | null;
 		const inInput = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA';
@@ -168,9 +175,7 @@
 		// `o`/`O` branch, which would otherwise match the same key.
 		if (e.key === 'O' && (e.metaKey || e.ctrlKey)) {
 			e.preventDefault();
-			for (const item of ui.pinned) {
-				window.open(item.url || brewPageUrl(item.t, item.n), '_blank', 'noopener');
-			}
+			openPinned();
 			return;
 		}
 		if (e.key === 'o' || e.key === 'O') {
@@ -313,6 +318,11 @@
 	<aside class="sidebar" class:open={ui.offcanvasOpen} aria-label="package details">
 		<div class="sidebar-head">
 			details{#if ui.pinned.length} · {ui.pinned.length} pinned{/if}
+			{#if ui.pinned.length}
+				<button class="open-all" onclick={openPinned} title="⌘⇧O — open every pinned page in a new tab">
+					[open all]
+				</button>
+			{/if}
 		</div>
 		{#if current}
 			<!-- the current card stays in place when pinned — pinning only changes
