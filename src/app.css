@@ -1,0 +1,329 @@
+/* new brew — hand-rolled TUI aesthetic. Dark, dense, monospace. */
+
+:root {
+	--bg: #0b0e14;
+	--panel: #11151d;
+	--fg: #c6cdd6;
+	--dim: #6b7683;
+	--faint: #3d4652;
+	--accent: #fbb040;
+	--green: #7ee787;
+	--blue: #79b8ff;
+	--red: #f47067;
+	--sel: #1c2430;
+	--border: #232b38;
+	--mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html {
+	background: var(--bg);
+	color-scheme: dark;
+}
+
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--fg);
+	font-family: var(--mono);
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+a {
+	color: var(--blue);
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+button {
+	font: inherit;
+	color: inherit;
+	background: none;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+}
+
+:focus-visible {
+	outline: 1px solid var(--accent);
+	outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	* {
+		scroll-behavior: auto !important;
+		transition: none !important;
+	}
+}
+
+/* ---------------------------------------------------------------- layout */
+
+.shell {
+	max-width: 940px;
+	margin: 0 auto;
+	padding: 1.5rem 1rem 4rem;
+}
+
+.rule {
+	overflow: hidden;
+	white-space: nowrap;
+	color: var(--faint);
+	user-select: none;
+}
+
+/* header */
+
+.header {
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: 0.5rem 1rem;
+}
+
+.header h1 {
+	margin: 0;
+	font-size: 1.35rem;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	color: var(--accent);
+}
+
+.header .meta {
+	color: var(--dim);
+	font-size: 0.85rem;
+}
+
+.notes {
+	color: var(--dim);
+	font-size: 0.8rem;
+	margin: 0.25rem 0 0;
+}
+
+.notes .warn {
+	color: var(--red);
+}
+
+/* filter bar */
+
+.filterbar {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.25rem;
+	padding: 0.4rem 0;
+}
+
+.chip {
+	color: var(--dim);
+	padding: 0.1rem 0.15rem;
+}
+
+.chip:hover {
+	color: var(--fg);
+}
+
+.chip.active {
+	color: var(--bg);
+	background: var(--fg);
+}
+
+.chip .cnt {
+	opacity: 0.65;
+	font-size: 0.75rem;
+}
+
+.search {
+	background: transparent;
+	border: none;
+	border-bottom: 1px solid var(--border);
+	color: var(--fg);
+	font: inherit;
+	font-size: 0.85rem;
+	width: 11rem;
+	max-width: 40vw;
+	padding: 0.15rem 0.1rem;
+}
+
+.search::placeholder {
+	color: var(--dim);
+}
+
+.spacer {
+	flex: 1;
+}
+
+.caughtup {
+	color: var(--dim);
+	padding: 0.1rem 0.15rem;
+}
+
+.caughtup:hover {
+	color: var(--green);
+}
+
+/* ------------------------------------------------------------------ list */
+
+.list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.row {
+	border-bottom: 1px solid var(--border);
+}
+
+.line {
+	display: grid;
+	grid-template-columns: 1.75ch 10ch minmax(4ch, 1fr) 8ch 5ch minmax(6ch, 12ch) auto;
+	gap: 0 0.75rem;
+	align-items: baseline;
+	width: 100%;
+	text-align: left;
+	padding: 0.2rem 0.3rem;
+	border-radius: 2px;
+}
+
+.line:hover {
+	background: var(--panel);
+}
+
+.row.selected > .line {
+	background: var(--sel);
+}
+
+.row.selected > .line .marker {
+	color: var(--accent);
+}
+
+.marker {
+	color: var(--faint);
+}
+
+.date {
+	color: var(--dim);
+	white-space: nowrap;
+}
+
+.name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.type {
+	color: var(--dim);
+	font-size: 0.8rem;
+}
+
+.type.cask {
+	color: var(--blue);
+}
+
+.kind {
+	font-size: 0.75rem;
+	color: var(--dim);
+}
+
+.kind.new {
+	color: var(--green);
+}
+
+.version {
+	color: var(--dim);
+	text-align: right;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.dep-badge {
+	color: var(--red);
+	font-size: 0.75rem;
+}
+
+/* detail pane */
+
+.detail {
+	padding: 0.35rem 0.3rem 0.6rem calc(1.75ch + 0.75rem + 0.3rem);
+	border-left: 1px solid var(--border);
+	margin-left: 0.3rem;
+}
+
+.detail .desc {
+	margin: 0;
+	color: var(--fg);
+}
+
+.detail .desc .pkg {
+	color: var(--accent);
+}
+
+.detail .dep-note {
+	color: var(--red);
+	font-size: 0.8rem;
+	margin: 0.15rem 0 0;
+}
+
+.actions {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.25rem 1rem;
+	margin-top: 0.35rem;
+	font-size: 0.85rem;
+}
+
+.install {
+	color: var(--green);
+	background: var(--panel);
+	padding: 0.05rem 0.4rem;
+	border: 1px solid var(--border);
+	border-radius: 2px;
+}
+
+.copy {
+	color: var(--dim);
+}
+
+.copy:hover {
+	color: var(--fg);
+}
+
+.copy.ok {
+	color: var(--green);
+}
+
+.actions a {
+	color: var(--blue);
+}
+
+/* empty / loading states */
+
+.state {
+	color: var(--dim);
+	padding: 1.5rem 0.3rem;
+}
+
+.state .ok {
+	color: var(--green);
+}
+
+.state a {
+	color: var(--blue);
+}
+
+/* footer */
+
+.footer {
+	margin-top: 2rem;
+	color: var(--faint);
+	font-size: 0.75rem;
+}

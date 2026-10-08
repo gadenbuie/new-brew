@@ -1,0 +1,22 @@
+{
+	"generated_at": "2026-10-08T14:00:00Z",
+	"retention_days": 60,
+	"core_head_sha": "0123456789abcdef0123456789abcdef01234567",
+	"cask_head_sha": "fedcba9876543210fedcba9876543210fedcba98",
+	"items": [
+		{ "n": "ghostty", "t": "c", "k": "n", "d": "2026-10-08", "v": "1.1.0", "desc": "Cross-platform, GPU-accelerated terminal emulator", "url": "https://ghostty.org", "dep": false },
+		{ "n": "ripgrep", "t": "f", "k": "u", "d": "2026-10-08", "v": "15.2.0", "desc": "Search tool like grep and faster than it", "url": "https://github.com/BurntSushi/ripgrep", "dep": false },
+		{ "n": "zot", "t": "f", "k": "n", "d": "2026-10-07", "v": "0.4.20", "desc": "Fast, static site generator in a single binary", "url": "https://github.com/zot-zot/zot", "dep": false },
+		{ "n": "ghostty", "t": "c", "k": "u", "d": "2026-10-07", "v": "1.0.1", "desc": "Cross-platform, GPU-accelerated terminal emulator", "url": "https://ghostty.org", "dep": false },
+		{ "n": "fd", "t": "f", "k": "u", "d": "2026-10-07", "v": "10.2.0", "desc": "Simple, fast and user-friendly alternative to find", "url": "https://github.com/sharkdp/fd", "dep": false },
+		{ "n": "neovide", "t": "c", "k": "u", "d": "2026-10-06", "v": "0.13.3", "desc": "No Nonsense Neovim Client", "url": "https://neovide.dev", "dep": false },
+		{ "n": "bat", "t": "f", "k": "u", "d": "2026-10-06", "v": "0.25.0", "desc": "Clone of cat(1) with syntax highlighting and Git integration", "url": "https://github.com/sharkdp/bat", "dep": false },
+		{ "n": "zed", "t": "c", "k": "u", "d": "2026-10-05", "v": "0.198.7", "desc": "High-performance, multiplayer code editor", "url": "https://zed.dev", "dep": false },
+		{ "n": "pgcenter", "t": "f", "k": "n", "d": "2026-10-05", "v": "0.10.0", "desc": "Tool for examining PostgreSQL internals", "url": "https://github.com/lesovsky/pgcenter", "dep": false },
+		{ "n": "eza", "t": "f", "k": "u", "d": "2026-10-04", "v": "0.21.4", "desc": "Modern, maintained replacement for ls", "url": "https://github.com/eza-community/eza", "dep": false },
+		{ "n": "visual-studio-code", "t": "c", "k": "u", "d": "2026-10-04", "v": "1.102.0", "desc": "Open-source code editor", "url": "https://code.visualstudio.com", "dep": false },
+		{ "n": "pgcli", "t": "f", "k": "u", "d": "2026-10-03", "v": "4.2.0", "desc": "CLI for PostgreSQL with auto-completion and syntax highlighting", "url": "https://github.com/dbcli/pgcli", "dep": true },
+		{ "n": "wezterm", "t": "c", "k": "u", "d": "2026-10-02", "v": "20261002.113931.0", "desc": "GPU-accelerated cross-platform terminal emulator and multiplexer", "url": "https://wezfurlong.org/wezterm/", "dep": false },
+		{ "n": "starship", "t": "f", "k": "u", "d": "2026-10-02", "v": "1.23.0", "desc": "Cross-shell prompt for astronauts", "url": "https://starship.rs", "dep": false }
+	]
+}
