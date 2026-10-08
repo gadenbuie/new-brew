@@ -14,6 +14,6 @@
 	}
 </script>
 
-<button class="copy" class:ok={copied} onclick={copy} aria-label="copy to clipboard">
+<button class="copy" class:ok={copied} onclick={copy} aria-label={copied ? 'copied' : 'copy to clipboard'}>
 	{copied ? '✓ copied' : label}
 </button>

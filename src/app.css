@@ -4,7 +4,7 @@
 	--bg: #0b0e14;
 	--panel: #11151d;
 	--fg: #c6cdd6;
-	--dim: #6b7683;
+	--dim: #84909e;
 	--faint: #3d4652;
 	--accent: #fbb040;
 	--green: #7ee787;
@@ -108,13 +108,16 @@ button {
 
 /* the timeline scrolls inside its own pane so the header, filters, and
  * footer shortcuts stay on screen. basis 0 — the pane takes whatever
- * space is left, and never lets its content size squeeze the chrome. */
+ * space is left, and never lets its content size squeeze the chrome.
+ * it is also a container for the row layout: rows reflow onto two lines
+ * when the pane itself gets narrow, not the viewport. */
 .list-scroll {
 	flex: 1 1 0;
 	min-height: 18rem;
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	padding-bottom: 0.5rem;
+	container-type: inline-size;
 }
 
 .rule {
@@ -164,8 +167,18 @@ button {
 	margin: 0.25rem 0 0;
 }
 
-.notes .warn {
-	color: var(--red);
+/* narrow: the theme toggle moves up beside the title and the meta line
+ * drops to its own full-width row — one wrapped line instead of two */
+@media (max-width: 1080px) {
+	.header .theme-toggle {
+		order: 2;
+		margin-left: auto;
+	}
+
+	.header .meta {
+		order: 3;
+		flex-basis: 100%;
+	}
 }
 
 /* filter bar */
@@ -193,7 +206,6 @@ button {
 }
 
 .chip .cnt {
-	opacity: 0.65;
 	font-size: 0.75rem;
 }
 
@@ -275,12 +287,6 @@ button {
 	font-size: 0.8rem;
 }
 
-/* expanded rows show the full description in their detail block — blank the
- * column rather than removing it, so the badge columns don't jump */
-.summary.off {
-	visibility: hidden;
-}
-
 .type {
 	color: var(--dim);
 	font-size: 0.8rem;
@@ -307,41 +313,52 @@ button {
 	text-overflow: ellipsis;
 }
 
+/* on a narrow pane the single-line grid collapses — the description column
+ * gets a couple of characters at phone widths. reflow the row onto two
+ * lines instead: date · name · version on top, description and badges below.
+ * the date column doubles as the second line's indent. */
+@container (max-width: 640px) {
+	.line {
+		grid-template-columns: 10ch minmax(0, 1fr) auto auto auto auto;
+		grid-template-areas:
+			'date name name name dep ver'
+			'.    sum  sum  t   k   k';
+		gap: 0.1rem 0.5rem;
+		padding-block: 0.25rem;
+	}
+
+	.line .date {
+		grid-area: date;
+	}
+
+	.line .name {
+		grid-area: name;
+	}
+
+	.line .summary {
+		grid-area: sum;
+	}
+
+	.line .type {
+		grid-area: t;
+	}
+
+	.line .kind {
+		grid-area: k;
+	}
+
+	.line .version {
+		grid-area: ver;
+	}
+
+	.line .dep-badge {
+		grid-area: dep;
+	}
+}
+
 .dep-badge {
 	color: var(--red);
 	font-size: 0.75rem;
-}
-
-/* detail pane */
-
-.detail {
-	padding: 0.35rem 0.3rem 0.6rem calc(1.75ch + 0.75rem + 0.3rem);
-	border-left: 1px solid var(--border);
-	margin-left: 0.3rem;
-}
-
-.detail .desc {
-	margin: 0;
-	color: var(--fg);
-}
-
-.detail .desc .pkg {
-	color: var(--accent);
-}
-
-.detail .dep-note {
-	color: var(--red);
-	font-size: 0.8rem;
-	margin: 0.15rem 0 0;
-}
-
-.actions {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: 0.25rem 1rem;
-	margin-top: 0.35rem;
-	font-size: 0.85rem;
 }
 
 .install {
@@ -362,10 +379,6 @@ button {
 
 .copy.ok {
 	color: var(--green);
-}
-
-.actions a {
-	color: var(--blue);
 }
 
 /* empty / loading states */
@@ -398,16 +411,21 @@ button {
 	color: var(--blue);
 }
 
-/* footer */
-
+/* footer — the shortcut hints are keyboard-only niceties; on narrow
+ * (touch-oriented) layouts they're replaced by a single tap hint so the
+ * source link is never ellipsized away */
 .footer {
 	margin-top: 0.75rem;
 	flex-shrink: 0;
-	color: var(--faint);
+	color: var(--dim);
 	font-size: 0.75rem;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.footer .touch-hints {
+	display: none;
 }
 
 .footer a {
@@ -527,7 +545,7 @@ input {
 
 .since-note {
 	margin: 0.1rem 0.2rem 0;
-	color: var(--faint);
+	color: var(--dim);
 	font-size: 0.7rem;
 }
 
@@ -552,9 +570,20 @@ input {
 	display: flex;
 	align-items: baseline;
 	gap: 0.5rem;
-	color: var(--faint);
+	color: var(--dim);
 	font-size: 0.7rem;
 	padding: 0 0.1rem;
+}
+
+.sidebar-head .close {
+	display: none;
+	color: var(--dim);
+	padding: 0.05rem 0.1rem;
+	font-size: 0.7rem;
+}
+
+.sidebar-head .close:hover {
+	color: var(--fg);
 }
 
 .sidebar-head .open-all {
@@ -757,10 +786,50 @@ input {
 		background: var(--bg);
 		box-shadow: -8px 0 24px rgb(0 0 0 / 0.35);
 		transform: translateX(100%);
-		transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+		/* a transformed-away offcanvas is still in the tab order and the
+		 * accessibility tree — visibility removes it, switching after the
+		 * slide-out (0s 180ms) and instantly on the way in (0s on .open) */
+		visibility: hidden;
+		transition:
+			transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+			visibility 0s linear 180ms;
 	}
 
 	.sidebar.open {
 		transform: none;
+		visibility: visible;
+		transition:
+			transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+			visibility 0s;
+	}
+
+	/* the offcanvas can't be dismissed by a keyboard esc on touch screens,
+	 * and the exposed backdrop strip is narrow — give it a visible close */
+	.sidebar-head .close {
+		display: inline-block;
+	}
+
+	/* touch: chips and the small text buttons get taller hit areas without
+	 * changing the desktop density */
+	@media (pointer: coarse) {
+		.chip,
+		.caughtup,
+		.theme-toggle,
+		.since-trigger {
+			padding: 0.4rem 0.35rem;
+		}
+
+		.card-head .pin,
+		.copy {
+			padding: 0.3rem 0.3rem;
+		}
+	}
+
+	.footer .kbd-hints {
+		display: none;
+	}
+
+	.footer .touch-hints {
+		display: inline;
 	}
 }

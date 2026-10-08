@@ -256,15 +256,15 @@
 		</button>
 	</header>
 	{#if ui.sinceMode === 'auto' && ui.firstVisit}
-		<p class="notes">first visit — showing the last 7 days. press <b>⌂ caught up</b> when you're done.</p>
+		<p class="notes" aria-live="polite">first visit — showing the last 7 days. press <b>⌂ caught up</b> when you're done.</p>
 	{:else if ui.capped}
-		<p class="notes">only the last {data.retentionDays} days of data are kept.</p>
+		<p class="notes" aria-live="polite">only the last {data.retentionDays} days of data are kept.</p>
 	{/if}
 	{#if asOfLabel}
-		<p class="notes">live sync paused — showing data as of {asOfLabel}</p>
+		<p class="notes" aria-live="polite">live sync paused — showing data as of {asOfLabel}</p>
 	{/if}
 	{#if data.syncing}
-		<p class="notes">syncing…</p>
+		<p class="notes" aria-live="polite">syncing…</p>
 	{/if}
 
 	<div class="rule" aria-hidden="true">{rule}</div>
@@ -318,7 +318,7 @@
 	</div>
 
 	<p class="footer">
-		j/k move · p pin/unpin · o homepage · O brew.sh · ⌘⇧O pinned · / filter · esc close · <a href="https://github.com/gadenbuie/new-brew">source</a>
+		<span class="kbd-hints">j/k move · p pin/unpin · o homepage · O brew.sh · ⌘⇧O pinned · / filter · esc close · </span><span class="touch-hints">tap a row for details · pin from its card · </span><a href="https://github.com/gadenbuie/new-brew">source</a>
 	</p>
 </div>
 
@@ -326,11 +326,15 @@
 	<aside class="sidebar" class:open={ui.offcanvasOpen} aria-label="package details">
 		<div class="sidebar-head">
 			details{#if ui.pinned.length} · {ui.pinned.length} pinned{/if}
+			<span class="spacer"></span>
 			{#if ui.pinned.length}
 				<button class="open-all" onclick={openPinned} title="⌘⇧O — open every pinned page in a new tab">
 					[open all]
 				</button>
 			{/if}
+			<button class="close" onclick={() => (ui.offcanvasOpen = false)} aria-label="close details">
+				[x]
+			</button>
 		</div>
 		{#if current}
 			<!-- the current card stays in place when pinned — pinning only changes

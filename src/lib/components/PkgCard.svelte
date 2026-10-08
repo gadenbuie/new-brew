@@ -39,7 +39,8 @@
 			error = false;
 			return;
 		}
-		dead = false;loading = true;
+		dead = false;
+		loading = true;
 		error = false;
 		detail = null;
 		timer = setTimeout(() => {
