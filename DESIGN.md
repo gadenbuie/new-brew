@@ -1,0 +1,189 @@
+# New Brew
+
+A static website for catching up on new and updated Homebrew packages — the
+stuff you see scroll by in the `brew update` preamble, but in a friendly,
+scannable, console-styled UI that remembers what you've already seen.
+
+## Core workflow
+
+> Take a product name → understand what it does → click out to the project
+> website if interested.
+
+New Brew collapses this into one screen: scan the timeline, expand a row to
+read what the thing is, follow the homepage link. The `brew.sh` page is one
+click away for anything that deserves a deeper look.
+
+## Architecture (hybrid data model)
+
+The Homebrew API has no timestamps and there is no first-party "what changed"
+feed, so we combine two data paths, both using the exact git-diff semantics
+that `brew update` itself uses:
+
+### 1. Precomputed changes (GitHub Action, 3× per day across US work hours)
+
+A scheduled workflow generates `static/data/changes.json`. It runs at
+8:00am ET, 12:30pm ET, and 5:00pm ET (2pm PT) — UTC cron `0 12`, `30 16`,
+`0 21` (times drift an hour earlier in winter since cron ignores DST —
+acceptable):
+
+- Blobless clones of `Homebrew/homebrew-core` and `Homebrew/homebrew-cask`.
+- `git log --name-status --since=60 days` over `Formula/` and `Casks/`
+  → one event per package change: `added` (new) / `modified` (updated).
+- Joins each package with `formulae.brew.sh/api/formula.json` +
+  `cask.json` metadata at build time → every row carries `description`,
+  `homepage`, `version`, `deprecated`.
+- Deduplicates to one row per package: the most recent event wins, but a
+  package whose earliest in-window event was an addition is marked `new`.
+- Records `generated_at` plus the `core_head_sha` / `cask_head_sha` the
+  data was cut from — this is the browser's gap-fill anchor.
+
+Schema (illustrative):
+
+```json
+{
+  "generated_at": "2026-10-08T14:00:00Z",
+  "retention_days": 60,
+  "core_head_sha": "…",
+  "cask_head_sha": "…",
+  "items": [
+    {
+      "n": "ripgrep",       // name/token
+      "t": "f",             // "f" formula | "c" cask
+      "k": "u",             // "u" updated | "n" new
+      "d": "2026-10-08",    // date of most recent event
+      "v": "15.2.0",        // current stable version
+      "desc": "Search tool like grep and faster than it",
+      "url": "https://github.com/BurntSushi/ripgrep",
+      "dep": false          // deprecated
+    }
+  ]
+}
+```
+
+### 2. Browser gap-fill (GitHub REST compare API)
+
+Since the hourly Action runs, the world moves on. On each visit the browser
+fills the gap between `*_head_sha` in changes.json and current HEAD:
+
+- `GET /repos/Homebrew/homebrew-core/compare/{base}...HEAD` — CORS open,
+  unauthenticated, returns up to 300 files with `status: added/modified`.
+- Chunk at ≤75 commits per compare (250-commit API cap; 300-file response cap)
+  → an hourly gap is typically a single compare call per repo.
+- Merge gap events into the precomputed rows (same dedupe rules), keeping the
+  newer date and letting an `added` event upgrade a package to `new`.
+- Cap gap-fill at ~20 requests per visit; on rate-limit exhaustion or failure,
+  fall back gracefully to the precomputed data with a small "as of HH:MM" note.
+
+### 3. Client-side dataset cache (localStorage)
+
+The merged dataset from the last successful sync is cached in localStorage so
+that revisiting between scheduled runs costs **zero API requests**:
+
+- Cached record: the merged `items` plus the tap HEAD SHAs actually synced to
+  and the `changes.json` identity (`generated_at` + base SHAs) it was built
+  from.
+- On load: paint the cached dataset instantly, then fetch `changes.json`
+  (a cheap static fetch, no rate limits, often served from HTTP cache). If its
+  identity matches the cache and a sync already happened, skip the GitHub API
+  entirely.
+- When it doesn't match (new Action run landed), gap-fill only from the
+  cached synced HEAD to current HEAD — i.e., each between-runs window pays
+  for lookups exactly once per browser, no matter how many times you visit.
+- First visit ever: gap-fill straight from `changes.json`'s base SHAs.
+- Quota errors on write are caught and ignored — caching silently degrades
+  to fetch-only if the dataset ever outgrows localStorage (~5 MB limit).
+
+### Rate-limit math (unauthenticated: 60 req/hr per visitor IP)
+
+| Action cadence | Gap size | Browser requests/visit |
+|---|---|---|
+| Weekly | ~5,700 commits/repo | ~46+ ❌ |
+| Daily | ~800 | ~26–30 ⚠️ |
+| **3×/day, work hours (chosen)** | ~300–450 (up to ~700 overnight) | **~12–16 once per window, 0 on cached revisits ✅** |
+| Hourly | ~35–50 | ~2–4, but wasteful for a browsing habit that isn't hourly |
+
+## Features
+
+- **Scope:** both formulae and casks, with filter chips to narrow.
+- **Seen tracking:** last-visit timestamp in localStorage. The window is
+  `max(last visit, 7 days ago)` on load; the timestamp updates when you
+  leave (or press a "caught up" / "mark seen" button — decide in UI polish).
+- **Timeline:** unified, newest first, with small badges: `new`/`upd` ×
+  `cask`/`formula`, date, name, version. Dense monospace rows, TUI aesthetic:
+  box-drawing, dark theme, keyboard-friendly (j/k or arrows to move,
+  enter/space to expand, `/` to filter, `esc` to collapse).
+- **Inline detail pane:** expanding a row reveals description, version,
+  homepage link, `brew install <name>` (click-to-copy), and links to the
+  brew.sh formula/cask page and project site. All data already in the row —
+  no network needed.
+- **First visit:** default window = 7 days, clearly labeled.
+- **Long absence (> retention):** window silently capped to available
+  retention (60 days), with a note.
+
+## UI sketch
+
+```
+ new brew                          since Oct 1 · 142 packages · updated 14:00
+ ───────────────────────────────────────────────────────────────────────────
+ [all] [casks] [formulae] [new] [updated]                    ⌂ caught up
+ ───────────────────────────────────────────────────────────────────────────
+   2026-10-08  ghostty         cask    NEW   1.1.0
+ ▸ 2026-10-08  ripgrep         formula UPD   15.2.0
+ ▸ 2026-10-07  zot             formula NEW  0.4.20
+ ▸ 2026-10-07  ghostty         cask    UPD   1.0.1
+   …
+
+ expanded row:
+ └─ ripgrep — Search tool like grep and faster than it
+    brew install ripgrep   [copy]
+    ↗ project site  ↗ brew.sh page
+```
+
+## Stack & repo layout
+
+- **SvelteKit + Svelte 5** (runes), `adapter-static` → GitHub Pages.
+- No UI framework, no CSS framework — hand-rolled console look, plain CSS.
+- No client data library — a small store module handles fetch, merge,
+  localStorage, and windowing logic.
+
+```
+.github/workflows/
+  data.yml      # 3×/day (US work hours): build changes.json, commit to repo
+  deploy.yml    # on push to main: build site, deploy to Pages
+scripts/
+  build-data.mjs   # the Action's generator
+src/routes/+page.svelte        # the whole app (single route)
+src/lib/data.svelte.ts         # changes.json fetch + gap-fill + merge + localStorage cache
+src/lib/state.svelte.ts        # localStorage: last visit, filters, expansion
+src/lib/components/            # Row.svelte, Detail.svelte, FilterBar.svelte
+static/data/changes.json       # generated, committed by the Action
+```
+
+## GitHub Pages deployment
+
+- Public repo → Actions minutes are free; the 3×-daily data job costs three
+  bot commits a day in history (bot commits are `[skip ci]` so no build
+  cascades).
+- `deploy.yml` builds and deploys via the official Pages Actions flow.
+- Pages CDN serves changes.json with sensible caching; the merged dataset is
+  also kept in localStorage as the revisit/edge-case cache (see
+  "Client-side dataset cache" above).
+
+## Edge cases & rules
+
+- Deleted/renamed packages: ignored (git `D`/`R` statuses skipped) — the app
+  is about discovering new things, not tracking removals.
+- Deprecated/disabled packages: shown with a `dep` badge so you know before
+  clicking through.
+- Items that fall outside the window but are `new`: still shown if their
+  event date is within the window; packages older than the window never
+  appear.
+- Version bumps with no visible version change (bottle-only rebuilds) are
+  deduped naturally by one-row-per-package.
+
+## Non-goals (anti-over-engineering)
+
+- No backend, no auth, no analytics, no server-side anything.
+- No per-item seen/dismissed state (timestamp only, per decision).
+- No search index — filtering the loaded dataset is enough at this scale.
+- No virtualized list until the DOM actually complains.
