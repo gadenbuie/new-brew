@@ -244,8 +244,8 @@
 					ui.sinceMode = 'custom';
 				}}
 				onclose={() => (ui.pickerOpen = false)}
-			/> · {visible.length}
-			{visible.length === 1 ? 'package' : 'packages'}{#if updatedLabel} · updated {updatedLabel}{/if}
+			/> · <span aria-live="polite">{visible.length}
+			{visible.length === 1 ? 'package' : 'packages'}</span>{#if updatedLabel} · updated {updatedLabel}{/if}
 		</span>
 		<button
 			class="theme-toggle"
@@ -261,10 +261,10 @@
 		<p class="notes" aria-live="polite">only the last {data.retentionDays} days of data are kept.</p>
 	{/if}
 	{#if asOfLabel}
-		<p class="notes" aria-live="polite">live sync paused — showing data as of {asOfLabel}</p>
+		<p class="notes" aria-live="polite">live sync paused — showing data as of {asOfLabel} (reload to retry)</p>
 	{/if}
 	{#if data.syncing}
-		<p class="notes" aria-live="polite">syncing…</p>
+		<p class="notes" aria-live="polite">syncing latest changes…</p>
 	{/if}
 
 	<div class="rule" aria-hidden="true">{rule}</div>
@@ -291,21 +291,25 @@
 
 	<div class="list-scroll">
 		{#if data.loading}
-			<p class="state">loading…</p>
+			<p class="state">loading packages…</p>
 		{:else if data.failed}
 			<p class="state">
-				couldn't load data. <button class="retry" onclick={() => location.reload()}>reload</button> to
-				retry.
+				couldn't load the package data — <button class="retry" onclick={() => location.reload()}>reload</button> to try
+				again, or check your connection if it keeps failing.
 			</p>
 		{:else if visible.length === 0}
 			<p class="state">
 				{#if data.items.length === 0}
-					no data yet — the scheduled job fills in <code>data/changes.json</code> soon.
+					no data yet — packages appear after the first data sync.
 				{:else if ui.query}
 					nothing matches “{ui.query}” — try <kbd>esc</kbd> to clear the filter.
+				{:else if ui.activeTypes.length || ui.activeKinds.length}
+					<span class="ok">✓ nothing in this window matches the current filters.</span>
+					clear one to widen the view, or check back later.
 				{:else}
-					<span class="ok">✓ all caught up{#if sinceLabel} since {sinceLabel}{/if}.</span> new changes
-					appear as homebrew taps move — check back later or press <b>⌂ caught up</b>.
+					<span class="ok caughtup-line">✓ all caught up</span><span class="ok caughtup-rest">{#if sinceLabel}{' — nothing new since '}{sinceLabel}{/if}.</span>
+					new changes arrive as homebrew taps move; press <b>⌂ caught up</b> to reset the
+					window to now.
 				{/if}
 			</p>
 		{:else}
@@ -351,8 +355,8 @@
 		{/each}
 		{#if !current && ui.pinned.length === 0}
 			<p class="sidebar-empty">
-				j/k or click a row to see details here — pin what you want to revisit (p) and it stays
-				for the session.
+				click a row (or j/k) to see its details here — pin what you want to revisit (p) and it
+				stays for the session.
 			</p>
 		{/if}
 	</aside>

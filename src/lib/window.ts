@@ -25,7 +25,9 @@ export function computeWindow(lastVisitMs: number | null, nowMs: number, retenti
 
 	if (lastVisitMs !== null && Number.isFinite(lastVisitMs)) {
 		firstVisit = false;
-		const lastVisit = new Date(lastVisitMs);
+		// a future stamp (clock skew after the last visit) would open an
+		// unfillable window — clamp to now so the worst case is "caught up"
+		const lastVisit = new Date(Math.min(lastVisitMs, nowMs));
 		start = lastVisit > sevenDaysAgo ? lastVisit : sevenDaysAgo;
 	}
 

@@ -78,7 +78,7 @@
 			if (deps) rows.push(['deps', deps]);
 		} else {
 			const apps = capList(d.apps, 4);
-			if (apps) rows.push(['installs', apps]);
+			if (apps) rows.push(['apps', apps]);
 			const binaries = capList(d.binaries, 4);
 			if (binaries) rows.push(['binaries', binaries]);
 			if (d.macosReq) rows.push(['requires', d.macosReq]);
@@ -101,13 +101,13 @@
 <article class="card" class:current aria-label="package details">
 	<header class="card-head">
 		<h2>{item.n}</h2>
-		<button class="pin" onclick={onpin} aria-pressed={pinned} title="p">
+		<button class="pin" onclick={onpin} aria-pressed={pinned} title={pinned ? 'unpin — remove this card from the session (p)' : 'pin — keep this card for the session (p)'}>
 			{pinned ? '[unpin]' : '[pin]'}
 		</button>
 	</header>
 
 	{#if loading}
-		<p class="card-state">fetching…</p>
+		<p class="card-state">fetching details…</p>
 	{:else if error}
 		<p class="card-state">
 			couldn't load full details — <a href={brewPageUrl(item.t, item.n)} target="_blank"

@@ -39,6 +39,14 @@ describe('computeWindow', () => {
 		const w = computeWindow(Number.NaN, now, 60);
 		expect(w.firstVisit).toBe(true);
 	});
+
+	it('clamps a future last-visit (clock skew) to now', () => {
+		const now = Date.UTC(2026, 9, 8, 12);
+		const w = computeWindow(now + 3 * DAY, now, 60);
+		expect(w.firstVisit).toBe(false);
+		expect(w.start.getTime()).toBe(now);
+		expect(w.capped).toBe(false);
+	});
 });
 
 describe('isoDate', () => {

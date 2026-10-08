@@ -69,6 +69,9 @@ button {
 	border: none;
 	padding: 0;
 	cursor: pointer;
+	transition:
+		color 120ms ease-out,
+		background-color 120ms ease-out;
 }
 
 :focus-visible {
@@ -80,6 +83,7 @@ button {
 	* {
 		scroll-behavior: auto !important;
 		transition: none !important;
+		animation: none !important;
 	}
 }
 
@@ -258,6 +262,7 @@ button {
 	text-align: left;
 	padding: 0.2rem 0.3rem;
 	border-radius: 2px;
+	transition: background-color 120ms ease-out;
 }
 
 .line:hover {
@@ -266,6 +271,9 @@ button {
 
 .row.selected > .line {
 	background: var(--sel);
+	/* the cursor of this TUI — the same accent edge that marks the card
+	 * tracking this selection in the sidebar, so row and card read as one */
+	box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .date {
@@ -388,15 +396,33 @@ button {
 	padding: 1.5rem 0.3rem;
 }
 
-.state .ok {
-	color: var(--green);
+/* the caught-up line earns the one authored moment: it types itself in at
+ * terminal speed, the completion this product exists for. the keyframes
+ * only reveal — the default state is fully painted, so reduced-motion
+ * (or a killed animation) loses nothing */
+.caughtup-line {
+	display: inline-block;
+	animation: type-in 480ms steps(16, end) both;
 }
 
-.state code {
-	background: var(--panel);
-	border: 1px solid var(--border);
-	border-radius: 2px;
-	padding: 0 0.25rem;
+@keyframes type-in {
+	from {
+		clip-path: inset(0 100% 0 0);
+	}
+}
+
+.caughtup-rest {
+	animation: appear 200ms ease-out 520ms both;
+}
+
+@keyframes appear {
+	from {
+		opacity: 0;
+	}
+}
+
+.state .ok {
+	color: var(--green);
 }
 
 .state kbd {
@@ -541,6 +567,15 @@ input {
 	font-size: 0.85rem;
 	padding: 0.1rem 0.25rem;
 	/* native picker chrome follows the theme via html color-scheme */
+}
+
+/* iOS Safari force-zooms focused inputs under 16px, breaking the layout.
+ * Keep the dense sizes for pointer:fine screens; give touch the floor. */
+@media (pointer: coarse) {
+	.search,
+	.since-date input {
+		font-size: 16px;
+	}
 }
 
 .since-note {
@@ -731,6 +766,7 @@ input {
 	margin: 0.6rem 0;
 	padding: 0.5rem 0.6rem;
 	white-space: pre-wrap;
+	overflow-wrap: break-word;
 }
 
 .card-links {
