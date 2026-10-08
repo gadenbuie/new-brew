@@ -272,8 +272,10 @@ button {
 .row.selected > .line {
 	background: var(--sel);
 	/* the cursor of this TUI — the same accent edge that marks the card
-	 * tracking this selection in the sidebar, so row and card read as one */
+	 * tracking this selection in the sidebar, so row and card read as one.
+	 * square corners: the accent edge runs flush, not clipped by a radius */
 	box-shadow: inset 2px 0 0 var(--accent);
+	border-radius: 0;
 }
 
 .date {
@@ -656,6 +658,9 @@ input {
 /* the card tracking the current selection gets a quiet accent edge */
 .card.current {
 	border-left: 2px solid var(--accent);
+	/* square the highlighted edge — the accent runs flush corner to corner */
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
 }
 
 @keyframes panel-in {
