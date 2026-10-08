@@ -127,7 +127,9 @@ that revisiting between scheduled runs costs **zero API requests**:
   with small badges: `new`/`upd` × `cask`/`formula`, date, name, version,
   plus a dimmed, ellipsized one-line description for scanability. Dense
   monospace rows, TUI aesthetic: box-drawing, dark theme, keyboard-friendly
-  (j/k or arrows to move, `/` to filter, `esc` to close).
+  (j/k or arrows to move, `/` to filter, `esc` to clear the filter). On
+  narrow screens the sidebar becomes an offcanvas: opened by tapping a
+  row (or Enter), closed by `esc`, the backdrop, or its own ✕ button.
 - **Two-column layout:** the timeline on the left; a details sidebar on the
   right that always shows a card for the current selection (moves with j/k
   or a row click). `p` (or the card's [pin] button) pins a row so its card
