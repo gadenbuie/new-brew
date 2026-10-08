@@ -81,4 +81,27 @@ describe('mergeItems', () => {
 		]);
 		expect(merged).toHaveLength(2);
 	});
+
+	it('collapses duplicate base rows per the dedupe rules (no silent overwrite)', () => {
+		const merged = mergeItems(
+			[
+				item({ n: 'ghostty', t: 'c', k: 'u', d: '2026-10-07', v: '1.0.1' }),
+				item({ n: 'ghostty', t: 'c', k: 'n', d: '2026-10-08', v: '1.1.0' })
+			],
+			[]
+		);
+		expect(merged).toHaveLength(1);
+		expect(merged[0]).toMatchObject({ k: 'n', d: '2026-10-08', v: '1.1.0' });
+	});
+
+	it('fills metadata blanks from whichever side has a value', () => {
+		const merged = mergeItems(
+			[
+				item({ n: 'sparse', v: '', desc: '', url: '' }),
+				item({ n: 'sparse', d: '2026-10-09', v: '2.0.0', desc: 'now with metadata', url: 'https://x' })
+			],
+			[]
+		);
+		expect(merged[0]).toMatchObject({ d: '2026-10-09', v: '2.0.0', desc: 'now with metadata' });
+	});
 });
