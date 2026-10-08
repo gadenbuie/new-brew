@@ -342,3 +342,320 @@ button {
 	color: var(--faint);
 	font-size: 0.75rem;
 }
+
+/* ------------------------------------------------- browser surfaces */
+
+::selection {
+	background: var(--accent);
+	color: var(--bg);
+}
+
+input {
+	caret-color: var(--accent);
+}
+
+/* thin dark scrollbars on the platform-provided chrome */
+
+* {
+	scrollbar-width: thin;
+	scrollbar-color: var(--border) transparent;
+}
+
+/* -------------------------------------------------------- since picker */
+
+.since-wrap {
+	display: inline-block;
+	position: relative;
+}
+
+.since-trigger {
+	color: var(--dim);
+	padding: 0.05rem 0;
+}
+
+.since-trigger:hover {
+	color: var(--fg);
+}
+
+.since-trigger .caret {
+	display: inline-block;
+	transition: transform 120ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.since-trigger[aria-expanded='true'] .caret {
+	transform: rotate(180deg);
+}
+
+.since-pop {
+	position: absolute;
+	top: calc(100% + 0.5rem);
+	left: 0;
+	z-index: 30;
+	background: var(--panel);
+	border: 1px solid var(--border);
+	border-radius: 4px;
+	box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
+	padding: 0.6rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	min-width: 15rem;
+	animation: pop-in 130ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes pop-in {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+.since-opt {
+	color: var(--dim);
+	text-align: left;
+	padding: 0.1rem 0.2rem;
+}
+
+.since-opt:hover {
+	color: var(--fg);
+}
+
+.since-opt.active {
+	color: var(--bg);
+	background: var(--fg);
+}
+
+.since-date {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	color: var(--dim);
+	padding: 0.1rem 0.2rem;
+}
+
+.since-date input {
+	background: transparent;
+	border: 1px solid var(--border);
+	border-radius: 2px;
+	color: var(--fg);
+	font: inherit;
+	font-size: 0.85rem;
+	padding: 0.1rem 0.25rem;
+	color-scheme: dark;
+}
+
+.since-note {
+	margin: 0.1rem 0.2rem 0;
+	color: var(--faint);
+	font-size: 0.7rem;
+}
+
+/* ------------------------------------------------------- detail panel */
+
+.shell.paneled {
+	max-width: 1340px;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 400px;
+	gap: 1.5rem;
+	align-items: start;
+}
+
+.panel-slot {
+	position: relative;
+}
+
+.backdrop {
+	display: none;
+}
+
+.pkgpanel {
+	background: var(--panel);
+	border: 1px solid var(--border);
+	border-radius: 4px;
+	padding: 0.9rem 1rem 1rem;
+	position: sticky;
+	top: 1.25rem;
+	max-height: calc(100vh - 2.5rem);
+	overflow-y: auto;
+	font-size: 0.85rem;
+	animation: panel-in 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes panel-in {
+	from {
+		opacity: 0;
+		transform: translateX(10px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+.pkgpanel-head {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+	margin: 0 0 0.4rem;
+}
+
+.pkgpanel-head h2 {
+	margin: 0;
+	font-size: 1.05rem;
+	color: var(--accent);
+	font-weight: 600;
+}
+
+.pkgpanel-kind {
+	color: var(--dim);
+	font-size: 0.75rem;
+}
+
+.pkgpanel-kind .kind {
+	color: var(--dim);
+}
+
+.pkgpanel-kind .kind.new {
+	color: var(--green);
+}
+
+.pkgpanel-head .close {
+	margin-left: auto;
+	color: var(--dim);
+	padding: 0.1rem 0.2rem;
+	align-self: flex-start;
+}
+
+.pkgpanel-head .close:hover {
+	color: var(--fg);
+}
+
+.pkgpanel-display {
+	margin: 0 0 0.15rem;
+	color: var(--fg);
+	font-weight: 600;
+}
+
+.pkgpanel-desc {
+	margin: 0 0 0.6rem;
+	color: var(--fg);
+}
+
+.pkgpanel-desc .dim {
+	color: var(--dim);
+}
+
+.pkgpanel-warn {
+	color: var(--red);
+	font-size: 0.8rem;
+	margin: 0 0 0.6rem;
+}
+
+.pkgpanel-rows {
+	margin: 0 0 0.7rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+}
+
+.pkgpanel-rows .row2 {
+	display: grid;
+	grid-template-columns: 9ch minmax(0, 1fr);
+	gap: 0.6rem;
+}
+
+.pkgpanel-rows dt {
+	color: var(--dim);
+}
+
+.pkgpanel-rows dd {
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+
+.pkgpanel-install {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	margin: 0.6rem 0;
+}
+
+.pkgpanel-caveats {
+	background: var(--bg);
+	border: 1px solid var(--border);
+	border-radius: 2px;
+	color: var(--fg);
+	font: inherit;
+	font-size: 0.78rem;
+	margin: 0.6rem 0;
+	padding: 0.5rem 0.6rem;
+	white-space: pre-wrap;
+}
+
+.pkgpanel-links {
+	margin-top: 0.8rem;
+	display: flex;
+	gap: 1rem;
+}
+
+.pkgpanel-state {
+	color: var(--dim);
+	margin: 0.5rem 0;
+}
+
+/* narrow screens: the panel becomes a right-anchored overlay */
+
+@media (max-width: 1080px) {
+	.shell.paneled {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.backdrop {
+		display: block;
+		position: fixed;
+		inset: 0;
+		z-index: 40;
+		background: rgb(0 0 0 / 0.55);
+		animation: fade-in 130ms ease-out;
+	}
+
+	@keyframes fade-in {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
+	.pkgpanel {
+		position: fixed;
+		z-index: 50;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		width: min(420px, 92vw);
+		max-height: none;
+		border-radius: 0;
+		border-top: none;
+		border-right: none;
+		border-bottom: none;
+		animation: slide-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	@keyframes slide-in {
+		from {
+			transform: translateX(30px);
+			opacity: 0.4;
+		}
+		to {
+			transform: none;
+			opacity: 1;
+		}
+	}
+}

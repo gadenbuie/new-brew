@@ -1,10 +1,13 @@
 <script lang="ts">
 	import Detail from '#lib/components/Detail.svelte';
 	import FilterBar from '#lib/components/FilterBar.svelte';
+	import PkgPanel from '#lib/components/PkgPanel.svelte';
 	import Row from '#lib/components/Row.svelte';
+	import SincePicker from '#lib/components/SincePicker.svelte';
 	import { data } from '#lib/data.svelte.ts';
 	import { ui } from '#lib/state.svelte.ts';
-	import type { Filter, Item } from '#lib/types.ts';
+	import type { Filter, Item, PkgType } from '#lib/types.ts';
+	import { isoDate, type SinceMode } from '#lib/window.ts';
 
 	const rule = '─'.repeat(200);
 
@@ -101,6 +104,25 @@
 			?.scrollIntoView({ block: 'nearest' });
 	}
 
+	/** The item backing the full-detail panel (fallback stub if it left the window). */
+	const panelItem = $derived.by(() => {
+		if (!ui.panelKey) return null;
+		const found = data.items.find((it) => `${it.t}/${it.n}` === ui.panelKey);
+		if (found) return found;
+		const [t, n] = ui.panelKey.split('/') as [PkgType, string];
+		return { n, t, k: 'u', d: '', v: '', desc: '', url: '', dep: false } satisfies Item;
+	});
+
+	/** Calendar bounds for the since picker: retention floor .. today. */
+	const sinceMin = $derived(
+		isoDate(new Date(Date.now() - data.retentionDays * 86_400_000))
+	);
+	const sinceMax = $derived(isoDate(new Date()));
+
+	function openPanel(item: Item): void {
+		ui.panelKey = `${item.t}/${item.n}`;
+	}
+
 	function onkeydown(e: KeyboardEvent): void {
 		const target = e.target as HTMLElement | null;
 		const inInput = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA';
@@ -111,6 +133,14 @@
 			return;
 		}
 		if (e.key === 'Escape') {
+			if (ui.pickerOpen) {
+				ui.pickerOpen = false;
+				return;
+			}
+			if (ui.panelKey) {
+				ui.panelKey = null;
+				return;
+			}
 			if (inInput && ui.query) {
 				ui.query = '';
 				return;
@@ -123,6 +153,13 @@
 			return;
 		}
 		if (inInput) return;
+
+		// `o` opens the full-detail panel for the selected row (mutt-style).
+		if (e.key === 'o' && visible[ui.selected]) {
+			e.preventDefault();
+			openPanel(visible[ui.selected]);
+			return;
+		}
 
 		// Let Enter/Space activate a focused button or link (row toggles, chips,
 		// copy…) — the native click already does the right thing.
@@ -161,15 +198,30 @@
 	/>
 </svelte:head>
 
-<div class="shell">
+<div class="shell" class:paneled={ui.panelKey}>
+<div class="main">
 	<header class="header">
 		<h1>new brew</h1>
 		<span class="meta">
-			{#if sinceLabel}since {sinceLabel} · {/if}{visible.length}
+			<SincePicker
+				mode={ui.sinceMode}
+				custom={ui.sinceCustom}
+				autoLabel={sinceLabel}
+				minIso={sinceMin}
+				maxIso={sinceMax}
+				open={ui.pickerOpen}
+				ontoggle={() => (ui.pickerOpen = !ui.pickerOpen)}
+				onpick={(m: SinceMode) => ui.setSince(m)}
+				oncustom={(iso: string) => {
+					ui.sinceCustom = iso;
+					ui.sinceMode = 'custom';
+				}}
+				onclose={() => (ui.pickerOpen = false)}
+			/> · {visible.length}
 			{visible.length === 1 ? 'package' : 'packages'}{#if updatedLabel} · updated {updatedLabel}{/if}
 		</span>
 	</header>
-	{#if ui.firstVisit}
+	{#if ui.sinceMode === 'auto' && ui.firstVisit}
 		<p class="notes">first visit — showing the last 7 days. press <b>⌂ caught up</b> when you're done.</p>
 	{:else if ui.capped}
 		<p class="notes">only the last {data.retentionDays} days of data are kept.</p>
@@ -226,13 +278,21 @@
 					expanded={ui.expanded === item.t + '/' + item.n}
 					selected={ui.selected === i}
 					ontoggle={() => toggle(item)}
+					onopen={() => openPanel(item)}
 				/>
 			{/each}
 		</ul>
 	{/if}
 
 	<p class="footer">
-		j/k move · enter expand · / filter · esc collapse · data: homebrew-core + homebrew-cask git
-		history, refreshed 3× daily
+		j/k move · enter expand · o full details · / filter · esc collapse · data: homebrew-core +
+		homebrew-cask git history, refreshed 3× daily
 	</p>
+</div>
+
+{#if panelItem && ui.panelKey}
+	<div class="panel-slot">
+		<PkgPanel item={panelItem} onclose={() => (ui.panelKey = null)} />
+	</div>
+{/if}
 </div>

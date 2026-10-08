@@ -6,12 +6,14 @@
 		item,
 		expanded = false,
 		selected = false,
-		ontoggle
+		ontoggle,
+		onopen
 	}: {
 		item: Item;
 		expanded?: boolean;
 		selected?: boolean;
 		ontoggle: () => void;
+		onopen: () => void;
 	} = $props();
 </script>
 
@@ -30,5 +32,5 @@
 		<span class="version">{item.v || '—'}</span>
 		{#if item.dep}<span class="dep-badge" title="deprecated or disabled">dep</span>{/if}
 	</button>
-	{#if expanded}<Detail {item} />{/if}
+	{#if expanded}<Detail {item} {onopen} />{/if}
 </li>
