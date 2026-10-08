@@ -42,15 +42,19 @@
 	});
 
 	/** The visible timeline: window + chip filter + search. */
-	const visible = $derived(
-		inWindow.filter((it) => {
+	const visible = $derived.by(() => {
+		const q = ui.query.trim().toLowerCase();
+		return inWindow.filter((it) => {
+			if (q && !it.n.toLowerCase().includes(q) && !it.desc.toLowerCase().includes(q)) {
+				return false;
+			}
 			if (ui.filter === 'casks' && it.t !== 'c') return false;
 			if (ui.filter === 'formulae' && it.t !== 'f') return false;
 			if (ui.filter === 'new' && it.k !== 'n') return false;
 			if (ui.filter === 'updated' && it.k !== 'u') return false;
 			return true;
-		})
-	);
+		});
+	});
 
 	// Keep the keyboard selection in range as filters shrink the list.
 	$effect(() => {

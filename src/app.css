@@ -316,6 +316,21 @@ button {
 	color: var(--green);
 }
 
+.state code {
+	background: var(--panel);
+	border: 1px solid var(--border);
+	border-radius: 2px;
+	padding: 0 0.25rem;
+}
+
+.state kbd {
+	background: var(--panel);
+	border: 1px solid var(--border);
+	border-radius: 2px;
+	padding: 0 0.25rem;
+	font-size: 0.8rem;
+}
+
 .state a {
 	color: var(--blue);
 }
