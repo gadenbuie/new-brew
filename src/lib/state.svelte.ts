@@ -15,14 +15,27 @@ const LAST_VISIT_KEY = 'newbrew:lastVisit';
 const FILTER_KEY = 'newbrew:filter';
 const THEME_KEY = 'newbrew:theme';
 
-/** Light/dark/system theme preference (persists; `system` follows the OS). */
+/** Light/dark/system — persisted only while it contradicts the OS setting;
+ * a choice that agrees with the system is redundant and forgotten. */
 export type ThemeMode = 'dark' | 'light' | 'system';
+
+function systemPrefersLight(): boolean {
+	return window.matchMedia('(prefers-color-scheme: light)').matches;
+}
 
 function readTheme(): ThemeMode {
 	if (!browser) return 'system';
 	try {
 		const saved = localStorage.getItem(THEME_KEY);
-		if (saved === 'dark' || saved === 'light') return saved;
+		if (saved === 'dark' || saved === 'light') {
+			// a saved choice that now agrees with the OS is redundant — forget
+			// it and follow the system (they render identically anyway)
+			if ((saved === 'light') === systemPrefersLight()) {
+				localStorage.removeItem(THEME_KEY);
+				return 'system';
+			}
+			return saved;
+		}
 	} catch {
 		/* fine */
 	}
@@ -81,7 +94,7 @@ class UIState {
 	sinceCustom = $state('');
 	pickerOpen = $state(false);
 
-	/** Light/dark/system — persisted, unlike the session-only bits above. */
+	/** Light/dark/system — stored only while it contradicts the OS setting. */
 	theme: ThemeMode = $state('system');
 
 	/**
@@ -109,7 +122,7 @@ class UIState {
 		// while in `system` mode, follow the OS preference as it changes
 		window
 			.matchMedia('(prefers-color-scheme: light)')
-			.addEventListener('change', () => this.#applyTheme());
+			.addEventListener('change', () => this.#onSystemChange());
 
 		const stamp = () => this.#stampVisit();
 		window.addEventListener('pagehide', stamp);
@@ -199,7 +212,7 @@ class UIState {
 		return this.windowStart ? isoDate(this.windowStart) : '';
 	}
 
-	/** Cycle dark → light → system → dark and persist. */
+	/** Cycle dark → light → system → dark. */
 	cycleTheme(): void {
 		const next: ThemeMode =
 			this.theme === 'dark' ? 'light' : this.theme === 'light' ? 'system' : 'dark';
@@ -208,11 +221,35 @@ class UIState {
 
 	setTheme(mode: ThemeMode): void {
 		this.theme = mode;
+		this.#persistTheme();
+		this.#applyTheme();
+	}
+
+	/** The stored key is exactly "a choice that contradicts the system" —
+	 * written while the contradiction exists, dropped the moment it ends. */
+	#persistTheme(): void {
+		if (!browser) return;
 		try {
-			localStorage.setItem(THEME_KEY, mode);
+			const contradicts =
+				this.theme !== 'system' && (this.theme === 'light') !== systemPrefersLight();
+			if (contradicts) localStorage.setItem(THEME_KEY, this.theme);
+			else localStorage.removeItem(THEME_KEY);
 		} catch {
 			/* fine */
 		}
+	}
+
+	/** OS preference changed: re-evaluate the contract. A choice that now
+	 * agrees with the system is redundant — drop it and follow the system;
+	 * one that now contradicts is (re)affirmed in storage. */
+	#onSystemChange(): void {
+		if (
+				this.theme !== 'system' &&
+				(this.theme === 'light') === systemPrefersLight()
+		) {
+			this.theme = 'system';
+		}
+		this.#persistTheme();
 		this.#applyTheme();
 	}
 
