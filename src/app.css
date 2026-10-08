@@ -182,7 +182,8 @@ button {
 
 .line {
 	display: grid;
-	grid-template-columns: 1.75ch 10ch minmax(4ch, 1fr) 8ch 5ch minmax(6ch, 12ch) auto;
+	grid-template-columns:
+		1.75ch 10ch minmax(6ch, 18ch) minmax(4ch, 1fr) 8ch 5ch minmax(6ch, 12ch) auto;
 	gap: 0 0.75rem;
 	align-items: baseline;
 	width: 100%;
@@ -216,6 +217,20 @@ button {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.summary {
+	color: var(--dim);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 0.8rem;
+}
+
+/* expanded rows show the full description in their detail block — blank the
+ * column rather than removing it, so the badge columns don't jump */
+.summary.off {
+	visibility: hidden;
 }
 
 .type {

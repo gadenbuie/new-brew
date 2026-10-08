@@ -27,6 +27,7 @@
 		<span class="marker" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
 		<span class="date">{item.d}</span>
 		<span class="name">{item.n}</span>
+		<span class="summary" class:off={expanded}>{item.desc}</span>
 		<span class="type" class:cask={item.t === 'c'}>{item.t === 'c' ? 'cask' : 'formula'}</span>
 		<span class="kind" class:new={item.k === 'n'}>{item.k === 'n' ? 'NEW' : 'UPD'}</span>
 		<span class="version">{item.v || '—'}</span>

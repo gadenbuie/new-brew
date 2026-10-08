@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import type { GapEvent } from './gap';
 import { itemKey, mergeItems, sortItems } from './merge';
 import type { Item } from './types';
 
 function item(partial: Partial<Item> & { n: string }): Item {
 	return { t: 'f', k: 'u', d: '2026-10-08', v: '1.0.0', desc: '', url: '', dep: false, ...partial };
+}
+
+function ev(partial: Partial<GapEvent> & { n: string }): GapEvent {
+	const d = partial.d ?? '2026-10-08';
+	return { t: 'f', k: 'u', d, ts: partial.ts ?? `${d}T12:00:00.000Z`, ...partial };
 }
 
 describe('itemKey', () => {
@@ -22,6 +28,23 @@ describe('sortItems', () => {
 		expect(sorted.map((i) => i.n)).toEqual(['z', 'a', 'b']);
 	});
 
+	it('sorts by precise ts within the same day', () => {
+		const sorted = sortItems([
+			item({ n: 'late', d: '2026-10-08', ts: '2026-10-08T20:00:00.000Z' }),
+			item({ n: 'early', d: '2026-10-08', ts: '2026-10-08T06:00:00.000Z' }),
+			item({ n: 'noon', d: '2026-10-08', ts: '2026-10-08T12:00:00.000Z' })
+		]);
+		expect(sorted.map((i) => i.n)).toEqual(['late', 'noon', 'early']);
+	});
+
+	it('treats a missing ts as the day at UTC midnight (legacy cached rows)', () => {
+		const sorted = sortItems([
+			item({ n: 'legacy', d: '2026-10-08' }),
+			item({ n: 'precise', d: '2026-10-08', ts: '2026-10-08T00:00:01.000Z' })
+		]);
+		expect(sorted.map((i) => i.n)).toEqual(['precise', 'legacy']);
+	});
+
 	it('does not mutate the input', () => {
 		const input = [item({ n: 'b', d: '2026-10-01' }), item({ n: 'a', d: '2026-10-02' })];
 		sortItems(input);
@@ -31,55 +54,71 @@ describe('sortItems', () => {
 
 describe('mergeItems', () => {
 	it('adds new gap packages with empty metadata', () => {
-		const merged = mergeItems([], [{ n: 'fresh', t: 'f', k: 'n', d: '2026-10-08' }]);
+		const merged = mergeItems([], [ev({ n: 'fresh', k: 'n' })]);
 		expect(merged).toHaveLength(1);
-		expect(merged[0]).toMatchObject({ n: 'fresh', k: 'n', v: '', desc: '', url: '', dep: false });
+		expect(merged[0]).toMatchObject({
+			n: 'fresh',
+			k: 'n',
+			ts: '2026-10-08T12:00:00.000Z',
+			v: '',
+			desc: '',
+			url: '',
+			dep: false
+		});
 	});
 
 	it('keeps newer date on re-modified packages', () => {
-		const merged = mergeItems([item({ n: 'rg', d: '2026-10-05' })], [
-			{ n: 'rg', t: 'f', k: 'u', d: '2026-10-08' }
-		]);
+		const merged = mergeItems(
+			[item({ n: 'rg', d: '2026-10-05', ts: '2026-10-05T09:00:00.000Z' })],
+			[ev({ n: 'rg', k: 'u', d: '2026-10-08' })]
+		);
 		expect(merged[0].d).toBe('2026-10-08');
+		expect(merged[0].ts).toBe('2026-10-08T12:00:00.000Z');
 		expect(merged[0].v).toBe('1.0.0'); // metadata survives
 	});
 
 	it('keeps the precomputed date when the gap event is older', () => {
-		const merged = mergeItems([item({ n: 'rg', d: '2026-10-08' })], [
-			{ n: 'rg', t: 'f', k: 'u', d: '2026-10-01' }
-		]);
+		const merged = mergeItems(
+			[item({ n: 'rg', d: '2026-10-08', ts: '2026-10-08T18:00:00.000Z' })],
+			[ev({ n: 'rg', k: 'u', d: '2026-10-01' })]
+		);
 		expect(merged[0].d).toBe('2026-10-08');
+		expect(merged[0].ts).toBe('2026-10-08T18:00:00.000Z');
 	});
 
 	it('upgrades to new on an added gap event', () => {
-		const merged = mergeItems([item({ n: 'rg', k: 'u' })], [
-			{ n: 'rg', t: 'f', k: 'n', d: '2026-10-08' }
-		]);
+		const merged = mergeItems([item({ n: 'rg', k: 'u' })], [ev({ n: 'rg', k: 'n' })]);
 		expect(merged[0].k).toBe('n');
 	});
 
 	it('keeps new when later gap events are updates (earliest in-window event was an addition)', () => {
-		const merged = mergeItems([item({ n: 'rg', k: 'n' })], [
-			{ n: 'rg', t: 'f', k: 'u', d: '2026-10-08' }
-		]);
+		const merged = mergeItems([item({ n: 'rg', k: 'n' })], [ev({ n: 'rg', k: 'u' })]);
 		expect(merged[0].k).toBe('n');
 	});
 
 	it('dedupes bottle-only rebuilds into one row', () => {
 		const merged = mergeItems([item({ n: 'rg' })], [
-			{ n: 'rg', t: 'f', k: 'u', d: '2026-10-07' },
-			{ n: 'rg', t: 'f', k: 'u', d: '2026-10-08' },
-			{ n: 'rg', t: 'f', k: 'u', d: '2026-10-08' }
+			ev({ n: 'rg', k: 'u', d: '2026-10-07' }),
+			ev({ n: 'rg', k: 'u', d: '2026-10-08' }),
+			ev({ n: 'rg', k: 'u', d: '2026-10-08' })
 		]);
 		expect(merged).toHaveLength(1);
 		expect(merged[0].d).toBe('2026-10-08');
 	});
 
 	it('merges casks and formulae under separate keys', () => {
-		const merged = mergeItems([item({ n: 'ghostty', t: 'c' })], [
-			{ n: 'ghostty', t: 'f', k: 'n', d: '2026-10-08' }
-		]);
+		const merged = mergeItems(
+			[item({ n: 'ghostty', t: 'c' })],
+			[ev({ n: 'ghostty', t: 'f', k: 'n' })]
+		);
 		expect(merged).toHaveLength(2);
+	});
+
+	it('keeps the more precise ts when a same-day gap event lands on a day-level row', () => {
+		const merged = mergeItems([item({ n: 'day', d: '2026-10-08' })], [
+			ev({ n: 'day', k: 'u', d: '2026-10-08', ts: '2026-10-08T15:30:00.000Z' })
+		]);
+		expect(merged[0]).toMatchObject({ d: '2026-10-08', ts: '2026-10-08T15:30:00.000Z' });
 	});
 
 	it('collapses duplicate base rows per the dedupe rules (no silent overwrite)', () => {

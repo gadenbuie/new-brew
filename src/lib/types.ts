@@ -16,6 +16,12 @@ export interface Item {
 	k: Kind;
 	/** date of most recent change, YYYY-MM-DD */
 	d: string;
+	/**
+	 * UTC ISO 8601 timestamp of the most recent change (committer time) —
+	 * precise ordering. Absent in datasets/cache rows from before this field
+	 * existed; sort code falls back to `d` at UTC midnight.
+	 */
+	ts?: string;
 	/** current stable version ('' when unknown, e.g. gap-fill only rows) */
 	v: string;
 	/** short description */

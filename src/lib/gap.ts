@@ -7,6 +7,13 @@ export interface GapEvent {
 	k: Kind;
 	/** date of the newest commit in the compare chunk the event came from, YYYY-MM-DD */
 	d: string;
+	/**
+	 * UTC ISO timestamp of that chunk-newest commit. The compare API
+	 * can't attribute files to individual commits, so everything in one
+	 * chunk shares it — sorting is precise for precomputed rows, and
+	 * only gap-chunk members tie.
+	 */
+	ts: string;
 }
 
 /** Tap repo configuration for gap-fill. */
@@ -87,17 +94,13 @@ function basename(path: string): string {
 }
 
 /**
- * Turn compare-API files into events.
- *
- * Deleted and renamed packages are out of scope (this app is about discovering
- * new things, not tracking removals), so `removed` / `renamed` — and the
- * `previous_filename` side of a rename — are skipped entirely. `copied` is
- * rare but is effectively an addition, so it counts as one.
+ * Turn compare-API files into events. `ts` is the full UTC ISO timestamp
+ * of the chunk's newest commit; `d` is its YYYY-MM-DD slice.
  */
 export function filesToEvents(
 	files: { status: string; filename: string }[] | null | undefined,
 	cfg: RepoCfg,
-	date: string
+	ts: string
 ): GapEvent[] {
 	const out: GapEvent[] = [];
 	if (!files) return out;
@@ -107,18 +110,23 @@ export function filesToEvents(
 		if (f.status === 'added' || f.status === 'copied') k = 'n';
 		else if (f.status === 'modified' || f.status === 'changed') k = 'u';
 		if (!k) continue; // removed / renamed / unchanged
-		out.push({ n: basename(f.filename), t: cfg.type, k, d: date });
+		out.push({ n: basename(f.filename), t: cfg.type, k, d: ts.slice(0, 10), ts });
 	}
 	return out;
 }
 
-function newestCommitDate(commits: GhCommit[]): string {
-	let max = '';
+/**
+ * Newest commit time of a compare range as a UTC ISO string. Parsed — never
+ * compared as raw strings — because GitHub returns Z-suffixed UTC but the
+ * generator's git output carries committer offsets.
+ */
+function newestCommitTs(commits: GhCommit[]): string {
+	let maxMs = Number.NEGATIVE_INFINITY;
 	for (const c of commits) {
-		const d = c.commit?.committer?.date ?? '';
-		if (d > max) max = d;
+		const t = Date.parse(c.commit?.committer?.date ?? '');
+		if (Number.isFinite(t) && t > maxMs) maxMs = t;
 	}
-	return max.slice(0, 10); // YYYY-MM-DD
+	return maxMs === Number.NEGATIVE_INFINITY ? new Date(0).toISOString() : new Date(maxMs).toISOString();
 }
 
 /** Progress tracker for partial syncs: everything strictly newer than `reached` is processed. */
@@ -173,7 +181,7 @@ export async function collectEvents(
 	const ahead = typeof cmp.ahead_by === 'number' ? cmp.ahead_by : commits.length;
 	const filesComplete = !cmp.files || cmp.files.length < 300;
 	if (filesComplete && ahead <= 250) {
-		out.push(...filesToEvents(cmp.files, cfg, newestCommitDate(commits)));
+		out.push(...filesToEvents(cmp.files, cfg, newestCommitTs(commits)));
 		progress.reached = base; // whole range processed
 		return;
 	}
@@ -266,7 +274,7 @@ async function collectEventsViaListing(
 		const anchor = shas.length > i + 75 ? shas[i + 75] : base;
 		const cmp = await gh<GhCompare>(`/repos/${cfg.repo}/compare/${anchor}...${chunkHead}`);
 		if (cmp.status === 'ahead' && cmp.commits?.length) {
-			out.push(...filesToEvents(cmp.files, cfg, newestCommitDate(cmp.commits)));
+			out.push(...filesToEvents(cmp.files, cfg, newestCommitTs(cmp.commits)));
 		}
 		progress.reached = anchor; // chunk covered (anchor, chunkHead]; everything above is done
 		if (anchor === base) return; // covered the full range

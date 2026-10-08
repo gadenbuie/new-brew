@@ -50,7 +50,8 @@ Schema (illustrative):
       "n": "ripgrep",       // name/token
       "t": "f",             // "f" formula | "c" cask
       "k": "u",             // "u" updated | "n" new
-      "d": "2026-10-08",    // date of most recent event
+      "d": "2026-10-08",    // date of most recent event (UTC, day granularity)
+      "ts": "2026-10-08T21:03:11.000Z", // full UTC committer timestamp — the sort key
       "v": "15.2.0",        // current stable version
       "desc": "Search tool like grep and faster than it",
       "url": "https://github.com/BurntSushi/ripgrep",
@@ -71,6 +72,11 @@ fills the gap between `*_head_sha` in changes.json and current HEAD:
   → an hourly gap is typically a single compare call per repo.
 - Merge gap events into the precomputed rows (same dedupe rules), keeping the
   newer date and letting an `added` event upgrade a package to `new`.
+- Sorting is by precise change time (`ts`, a UTC ISO committer timestamp).
+  Precomputed rows carry the exact commit time; gap events share their
+  compare-chunk's newest-commit timestamp (the compare API can't attribute
+  files to individual commits), so only gap-chunk members tie — those fall
+  back to alphabetical. Rows from caches predating `ts` sort by their day.
 - Cap gap-fill at ~20 requests per visit; on rate-limit exhaustion or failure,
   fall back gracefully to the precomputed data with a small "as of HH:MM" note.
 

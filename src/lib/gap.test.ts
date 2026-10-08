@@ -44,7 +44,9 @@ describe('collectEvents', () => {
 		const events: GapEvent[] = [];
 		const progress = { reached: null, diverged: false };
 		await collectEvents(gh, core, base, head, events, progress);
-		expect(events).toEqual([{ n: 'zot', t: 'f', k: 'n', d: '2026-10-03' }]);
+		expect(events).toEqual([
+			{ n: 'zot', t: 'f', k: 'n', d: '2026-10-03', ts: '2026-10-03T10:00:00.000Z' }
+		]);
 		expect(progress.reached).toBe(base);
 		expect(progress.diverged).toBe(false);
 		expect(calls).toHaveLength(1);
@@ -155,7 +157,9 @@ describe('collectEvents', () => {
 		const events: GapEvent[] = [];
 		const progress = { reached: null, diverged: false };
 		await expect(collectEvents(gh, core, base, head, events, progress)).rejects.toThrow(SyncAborted);
-		expect(events).toEqual([{ n: 'recent', t: 'f', k: 'n', d: '2026-10-08' }]);
+		expect(events).toEqual([
+			{ n: 'recent', t: 'f', k: 'n', d: '2026-10-08', ts: '2026-10-08T14:00:00.000Z' }
+		]);
 		expect(progress.reached).toBe(shas[85]); // resume point for the next visit
 	});
 
@@ -224,7 +228,9 @@ describe('collectEvents', () => {
 		const events: GapEvent[] = [];
 		const progress = { reached: null, diverged: false };
 		await collectEvents(gh, core, base, head, events, progress);
-		expect(events).toEqual([{ n: 'one-shot', t: 'f', k: 'n', d: '2026-10-08' }]);
+		expect(events).toEqual([
+			{ n: 'one-shot', t: 'f', k: 'n', d: '2026-10-08', ts: '2026-10-08T10:00:00.000Z' }
+		]);
 		expect(progress.reached).toBe(base);
 		expect(calls).toHaveLength(1);
 	});

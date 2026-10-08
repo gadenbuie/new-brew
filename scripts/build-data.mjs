@@ -27,6 +27,9 @@ const OUT = path.resolve(process.cwd(), process.env.NB_OUT ?? 'static/data/chang
 /**
  * @typedef {'f' | 'c'} PkgType
  * @typedef {{ name: string, type: PkgType, added: boolean, gone?: boolean, date: string }} Event
+ *  `date` is normalized to UTC ISO (git emits committer offsets like +02:00,
+ *  which don't compare lexicographically) and carries full second precision —
+ *  truncated to a day only when written out as `d`.
  */
 
 main().catch((err) => {
@@ -54,7 +57,8 @@ async function main() {
         n: row.name,
         t: row.type,
         k: row.kind,
-        d: row.date,
+        d: row.date.slice(0, 10),
+        ts: row.date, // full UTC ISO committer timestamp of the latest change
         v: meta?.version ?? '',
         desc: meta?.desc ?? '',
         url: meta?.homepage ?? '',
@@ -62,8 +66,11 @@ async function main() {
       };
     });
 
-    // Newest first, then by name for stable scanning.
-    items.sort((a, b) => (a.d === b.d ? a.n.localeCompare(b.n) : a.d < b.d ? 1 : -1));
+    // Newest first by precise timestamp, then by name for stable scanning.
+    const sortKey = (i) => i.ts ?? i.d;
+    items.sort((a, b) =>
+      sortKey(a) === sortKey(b) ? a.n.localeCompare(b.n) : sortKey(a) < sortKey(b) ? 1 : -1
+    );
 
     const [coreHeadSha, caskHeadSha] = await Promise.all([
       headSha(coreDir),
@@ -134,8 +141,12 @@ function parseLog(out, type) {
     if (!trimmed.trim()) continue;
     const lines = trimmed.split('\n').filter((l) => l.trim());
     const [header, ...changes] = lines;
-    const [sha, committerDate] = header.split('\x1f');
-    if (!sha || !committerDate) continue;
+    const [sha, rawDate] = header.split('\x1f');
+    // Normalize to UTC ISO: committer offsets vary (+01:00, -07:00, ...) and
+    // don't sort as strings. Date.parse handles every offset git emits.
+    const t = Date.parse(rawDate ?? '');
+    if (!sha || !Number.isFinite(t)) continue;
+    const committerDate = new Date(t).toISOString();
 
     // Collect both sides of any renames in this commit so neither the old
     // nor the new name contributes an event (per DESIGN.md, renames are
@@ -212,7 +223,7 @@ function dedupe(events) {
       name: latest.name,
       type: latest.type,
       kind: /** @type {'n' | 'u'} */ (list[0].added ? 'n' : 'u'),
-      date: latest.date.slice(0, 10), // YYYY-MM-DD from ISO commit date
+      date: latest.date, // full UTC ISO; caller slices the day for `d`
     });
   }
   return rows;
