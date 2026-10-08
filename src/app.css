@@ -278,6 +278,17 @@ button {
 	border-radius: 0;
 }
 
+/* light mode swaps the two: on the near-white background, white reads as
+ * the lifted selected row (the same relationship as dark's sel lift), and
+ * the subtle gray — too faint to mark a selection — sits right for hover */
+[data-theme='light'] .line:hover {
+	background: var(--sel);
+}
+
+[data-theme='light'] .row.selected > .line {
+	background: var(--panel);
+}
+
 .date {
 	color: var(--dim);
 	white-space: nowrap;
