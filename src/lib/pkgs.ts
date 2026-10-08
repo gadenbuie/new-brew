@@ -35,7 +35,8 @@ export interface PkgDetail {
 
 /** The brew.sh page URL for a package (fallback link when the API fails). */
 export function brewPageUrl(t: PkgType, n: string): string {
-	return `https://formulae.brew.sh/${t === 'c' ? 'cask' : 'formula'}/${n}/`;
+	// NB: formulae.brew.sh 404s on a trailing slash — no final '/' here.
+	return `https://formulae.brew.sh/${t === 'c' ? 'cask' : 'formula'}/${n}`;
 }
 
 const API = 'https://formulae.brew.sh/api';
@@ -106,6 +107,25 @@ function fmtMacos(macos: unknown): string | undefined {
 	return parts.join(', ') || undefined;
 }
 
+/**
+ * `depends_on.arch` arrives as a string, an array of strings or of
+ * objects (`[{ type: 'arm', bits: 64 }]`), or occasionally an object —
+ * render any of them compactly.
+ */
+function fmtArch(arch: unknown): string | undefined {
+	if (!arch) return undefined;
+	const one = (a: unknown): string => {
+		if (typeof a === 'string') return a;
+		if (a && typeof a === 'object') {
+			const { type, bits } = a as Record<string, unknown>;
+			return `${type ?? ''}${bits ? ` ${bits}-bit` : ''}`.trim();
+		}
+		return '';
+	};
+	const parts = (Array.isArray(arch) ? arch : [arch]).map(one).filter(Boolean);
+	return parts.length ? parts.join(' or ') : undefined;
+}
+
 function fromCask(d: Record<string, any>): PkgDetail {
 	const apps: string[] = [];
 	const binaries: string[] = [];
@@ -113,7 +133,6 @@ function fromCask(d: Record<string, any>): PkgDetail {
 		if (Array.isArray(art?.app)) apps.push(...art.app);
 		if (Array.isArray(art?.binary)) binaries.push(...art.binary);
 	}
-	const arch = d.depends_on?.arch;
 	return {
 		name: d.token,
 		display: d.name?.length ? d.name.join(' / ') : undefined,
@@ -125,7 +144,7 @@ function fromCask(d: Record<string, any>): PkgDetail {
 		apps,
 		binaries,
 		macosReq: fmtMacos(d.depends_on?.macos),
-		archReq: Array.isArray(arch) ? arch.join(' or ') : (arch ?? undefined),
+		archReq: fmtArch(d.depends_on?.arch),
 		autoUpdates: Boolean(d.auto_updates),
 		caveats: d.caveats || undefined,
 		deprecated: Boolean(d.deprecated),

@@ -1,12 +1,11 @@
 <script lang="ts">
-	import Detail from '#lib/components/Detail.svelte';
 	import FilterBar from '#lib/components/FilterBar.svelte';
-	import PkgPanel from '#lib/components/PkgPanel.svelte';
+	import PkgCard from '#lib/components/PkgCard.svelte';
 	import Row from '#lib/components/Row.svelte';
 	import SincePicker from '#lib/components/SincePicker.svelte';
 	import { data } from '#lib/data.svelte.ts';
 	import { ui } from '#lib/state.svelte.ts';
-	import type { Filter, Item, PkgType } from '#lib/types.ts';
+	import type { Filter, Item } from '#lib/types.ts';
 	import { isoDate, type SinceMode } from '#lib/window.ts';
 
 	const rule = '─'.repeat(200);
@@ -90,11 +89,20 @@
 		return `${item.t}/${item.n}`;
 	}
 
-	function toggle(item: Item): void {
-		const key = keyOf(item);
-		ui.selected = visible.indexOf(item);
-		ui.expanded = ui.expanded === key ? null : key;
+	/** Below the two-column breakpoint the sidebar lives offcanvas. */
+	const narrowMq = typeof window === 'undefined' ? undefined : window.matchMedia('(max-width: 1080px)');
+	function isNarrow(): boolean {
+		return narrowMq?.matches ?? false;
 	}
+
+	/** Row click: select; on narrow screens also open the sidebar offcanvas. */
+	function onselectRow(item: Item): void {
+		ui.selected = visible.indexOf(item);
+		if (isNarrow()) ui.offcanvasOpen = true;
+	}
+
+	/** The row the sidebar's current card follows. */
+	const current = $derived(visible[ui.selected] ?? null);
 
 	function scrollToSelection(): void {
 		const item = visible[ui.selected];
@@ -104,24 +112,11 @@
 			?.scrollIntoView({ block: 'nearest' });
 	}
 
-	/** The item backing the full-detail panel (fallback stub if it left the window). */
-	const panelItem = $derived.by(() => {
-		if (!ui.panelKey) return null;
-		const found = data.items.find((it) => `${it.t}/${it.n}` === ui.panelKey);
-		if (found) return found;
-		const [t, n] = ui.panelKey.split('/') as [PkgType, string];
-		return { n, t, k: 'u', d: '', v: '', desc: '', url: '', dep: false } satisfies Item;
-	});
-
 	/** Calendar bounds for the since picker: retention floor .. today. */
 	const sinceMin = $derived(
 		isoDate(new Date(Date.now() - data.retentionDays * 86_400_000))
 	);
 	const sinceMax = $derived(isoDate(new Date()));
-
-	function openPanel(item: Item): void {
-		ui.panelKey = `${item.t}/${item.n}`;
-	}
 
 	function onkeydown(e: KeyboardEvent): void {
 		const target = e.target as HTMLElement | null;
@@ -133,20 +128,19 @@
 			return;
 		}
 		if (e.key === 'Escape') {
+			// preventDefault keeps native search-input Esc (which clears the field)
+			// from firing alongside the intended step-by-step chain.
+			e.preventDefault();
 			if (ui.pickerOpen) {
 				ui.pickerOpen = false;
 				return;
 			}
-			if (ui.panelKey) {
-				ui.panelKey = null;
+			if (ui.offcanvasOpen) {
+				ui.offcanvasOpen = false;
 				return;
 			}
 			if (inInput && ui.query) {
 				ui.query = '';
-				return;
-			}
-			if (ui.expanded) {
-				ui.expanded = null;
 				return;
 			}
 			if (inInput) searchEl?.blur();
@@ -154,10 +148,10 @@
 		}
 		if (inInput) return;
 
-		// `o` opens the full-detail panel for the selected row (mutt-style).
-		if (e.key === 'o' && visible[ui.selected]) {
+		// `p` pins (or unpins) the selected row for the session.
+		if ((e.key === 'p' || e.key === 'P') && visible[ui.selected]) {
 			e.preventDefault();
-			openPanel(visible[ui.selected]);
+			ui.togglePin(visible[ui.selected]);
 			return;
 		}
 
@@ -179,10 +173,11 @@
 				scrollToSelection();
 			}
 		} else if (e.key === 'Enter' || e.key === ' ') {
-			const item = visible[ui.selected];
-			if (item) {
+			// On narrow screens Enter/Space opens the sidebar offcanvas for the
+			// selected row; on wide screens the card already follows the selection.
+			if (visible[ui.selected] && isNarrow()) {
 				e.preventDefault();
-				toggle(item);
+				ui.offcanvasOpen = true;
 			}
 		}
 	}
@@ -198,7 +193,7 @@
 	/>
 </svelte:head>
 
-<div class="shell" class:paneled={ui.panelKey}>
+<div class="shell">
 <div class="main">
 	<header class="header">
 		<h1>new brew</h1>
@@ -273,26 +268,35 @@
 	{:else}
 		<ul class="list" aria-label="package timeline">
 			{#each visible as item, i (item.t + '/' + item.n)}
-				<Row
-					{item}
-					expanded={ui.expanded === item.t + '/' + item.n}
-					selected={ui.selected === i}
-					ontoggle={() => toggle(item)}
-					onopen={() => openPanel(item)}
-				/>
+				<Row {item} selected={ui.selected === i} onselect={onselectRow} />
 			{/each}
 		</ul>
 	{/if}
 
 	<p class="footer">
-		j/k move · enter expand · o full details · / filter · esc collapse · data: homebrew-core +
+		j/k move · enter details · p pin/unpin · / filter · esc close · data: homebrew-core +
 		homebrew-cask git history, refreshed 3× daily
 	</p>
 </div>
 
-{#if panelItem && ui.panelKey}
-	<div class="panel-slot">
-		<PkgPanel item={panelItem} onclose={() => (ui.panelKey = null)} />
-	</div>
-{/if}
+<div class="panel-slot">
+	<aside class="sidebar" class:open={ui.offcanvasOpen} aria-label="package details">
+		<div class="sidebar-head">
+			details{#if ui.pinned.length} · {ui.pinned.length} pinned{/if}
+		</div>
+		{#if current && !ui.isPinned(current)}
+			<PkgCard item={current} current pinned={false} onpin={() => ui.togglePin(current)} />
+		{/if}
+		{#each ui.pinned as p (p.t + '/' + p.n)}
+			<PkgCard item={p} pinned onpin={() => ui.togglePin(p)} />
+		{/each}
+		{#if !current && ui.pinned.length === 0}
+			<p class="sidebar-empty">
+				j/k or click a row to see details here — pin what you want to revisit (p) and it stays
+				for the session.
+			</p>
+		{/if}
+	</aside>
+	<div class="backdrop" class:open={ui.offcanvasOpen} aria-hidden="true" onclick={() => (ui.offcanvasOpen = false)}></div>
+</div>
 </div>

@@ -18,8 +18,8 @@ function stubFetch(json: unknown, ok = true) {
 
 describe('brewPageUrl', () => {
 	it('builds formula and cask URLs', () => {
-		expect(brewPageUrl('f', 'ripgrep')).toBe('https://formulae.brew.sh/formula/ripgrep/');
-		expect(brewPageUrl('c', 'ghostty')).toBe('https://formulae.brew.sh/cask/ghostty/');
+		expect(brewPageUrl('f', 'ripgrep')).toBe('https://formulae.brew.sh/formula/ripgrep');
+		expect(brewPageUrl('c', 'ghostty')).toBe('https://formulae.brew.sh/cask/ghostty');
 	});
 });
 
@@ -82,6 +82,26 @@ describe('fetchPkg', () => {
 		});
 		const c = await fetchPkg('c', 'ventura-cask');
 		expect(c.macosReq).toBe('macOS ventura');
+	});
+
+	it('renders arch requirements: string, array of strings, and array of objects', async () => {
+		globalThis.fetch = stubFetch({ token: 'a1', name: [], depends_on: { arch: 'x86_64' } });
+		expect((await fetchPkg('c', 'a1')).archReq).toBe('x86_64');
+
+		globalThis.fetch = stubFetch({
+			token: 'a2',
+			name: [],
+			depends_on: { arch: ['arm64', 'x86_64'] }
+		});
+		expect((await fetchPkg('c', 'a2')).archReq).toBe('arm64 or x86_64');
+
+		// the real bettermacwidgets shape: [{ type: 'arm', bits: 64 }]
+		globalThis.fetch = stubFetch({
+			token: 'bettermacwidgets',
+			name: [],
+			depends_on: { arch: [{ type: 'arm', bits: 64 }] }
+		});
+		expect((await fetchPkg('c', 'bettermacwidgets')).archReq).toBe('arm 64-bit');
 	});
 
 	it('caches per session — one fetch for repeated lookups', async () => {

@@ -1,14 +1,14 @@
 import { browser } from '$app/env';
-import type { Filter } from './types';
+import type { Filter, Item } from './types';
 import { presetWindow, isoDate, type SinceMode } from './window';
 
 /**
- * UI state: last-visit timestamp, scope filter, search query, expansion,
- * keyboard selection, the session-scoped "since" override, and the
- * full-detail panel. localStorage-backed bits live here (except the dataset
- * cache, which `data.svelte.ts` owns). The since override and panel are
+ * UI state: last-visit timestamp, scope filter, search query, keyboard
+ * selection, the session-scoped "since" override, and the sidebar's pinned
+ * review cards. localStorage-backed bits live here (except the dataset
+ * cache, which `data.svelte.ts` owns). Pins and the since override are
  * deliberately session-only — new visits return to the settled
- * since-last-visit behavior.
+ * since-last-visit behavior with an empty review stack.
  */
 
 const LAST_VISIT_KEY = 'newbrew:lastVisit';
@@ -25,11 +25,13 @@ function readLastVisit(): number | null {
 	}
 }
 
+function keyOf(item: Item): string {
+	return `${item.t}/${item.n}`;
+}
+
 class UIState {
 	filter: Filter = $state('all');
 	query = $state('');
-	/** item key (`t/n`) of the expanded row, if any */
-	expanded: string | null = $state(null);
 	/** keyboard-selected index into the visible list */
 	selected = $state(0);
 	/** start of the "since your last visit" window */
@@ -42,8 +44,14 @@ class UIState {
 	sinceCustom = $state('');
 	pickerOpen = $state(false);
 
-	/** item key (`t/n`) of the full-detail panel, if open */
-	panelKey: string | null = $state(null);
+	/**
+	 * Pinned review cards, in pin order (a scan-and-pin reading queue).
+	 * Snapshots: pinned rows keep the item as it was when pinned, even if
+	 * the live row later re-sorts out of the visible window.
+	 */
+	pinned: Item[] = $state([]);
+	/** Narrow screens: the sidebar offcanvas is open. */
+	offcanvasOpen = $state(false);
 
 	#initialized = false;
 
@@ -99,7 +107,6 @@ class UIState {
 		if (customIso) this.sinceCustom = customIso;
 		this.pickerOpen = false;
 		this.selected = 0;
-		this.expanded = null;
 	}
 
 	/** "caught up" button: back to auto, stamp now, recompute (list collapses). */
@@ -109,8 +116,18 @@ class UIState {
 		this.pickerOpen = false;
 		this.#stampVisit();
 		this.refreshWindow(retentionDays);
-		this.expanded = null;
 		this.selected = 0;
+	}
+
+	isPinned(item: Item): boolean {
+		return this.pinned.some((p) => keyOf(p) === keyOf(item));
+	}
+
+	/** Pin the item for the session, or unpin it if it already is. */
+	togglePin(item: Item): void {
+		const i = this.pinned.findIndex((p) => keyOf(p) === keyOf(item));
+		if (i >= 0) this.pinned.splice(i, 1);
+		else this.pinned.push({ ...item });
 	}
 
 	/** Window start as a `YYYY-MM-DD` comparable to item dates. */

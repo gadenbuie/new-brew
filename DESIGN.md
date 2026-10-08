@@ -114,14 +114,20 @@ that revisiting between scheduled runs costs **zero API requests**:
 - **Seen tracking:** last-visit timestamp in localStorage. The window is
   `max(last visit, 7 days ago)` on load; the timestamp updates when you
   leave (or press a "caught up" / "mark seen" button — decide in UI polish).
-- **Timeline:** unified, newest first, with small badges: `new`/`upd` ×
-  `cask`/`formula`, date, name, version. Dense monospace rows, TUI aesthetic:
-  box-drawing, dark theme, keyboard-friendly (j/k or arrows to move,
-  enter/space to expand, `/` to filter, `esc` to collapse).
-- **Inline detail pane:** expanding a row reveals description, version,
-  homepage link, `brew install <name>` (click-to-copy), and links to the
-  brew.sh formula/cask page and project site. All data already in the row —
-  no network needed.
+- **Timeline:** unified, newest first (by precise UTC commit timestamp),
+  with small badges: `new`/`upd` × `cask`/`formula`, date, name, version,
+  plus a dimmed, ellipsized one-line description for scanability. Dense
+  monospace rows, TUI aesthetic: box-drawing, dark theme, keyboard-friendly
+  (j/k or arrows to move, `/` to filter, `esc` to close).
+- **Two-column layout:** the timeline on the left; a details sidebar on the
+  right that always shows a card for the current selection (moves with j/k
+  or a row click). `p` (or the card's [pin] button) pins a row so its card
+  stays in the sidebar for the session — a scan-and-pin review queue in pin
+  order, with the current selection's card always on top unless that row is
+  already pinned. Cards fetch rich metadata (versions, license, deps /
+  artifacts & requirements, caveats, deprecation) from formulae.brew.sh on
+  demand, session-cached. Below ~1080px the sidebar becomes an offcanvas
+  stack opened with enter/space or a row tap. Pins are session-only.
 - **First visit:** default window = 7 days, clearly labeled.
 - **Long absence (> retention):** window silently capped to available
   retention (60 days), with a note.
@@ -133,16 +139,19 @@ that revisiting between scheduled runs costs **zero API requests**:
  ───────────────────────────────────────────────────────────────────────────
  [all] [casks] [formulae] [new] [updated]                    ⌂ caught up
  ───────────────────────────────────────────────────────────────────────────
-   2026-10-08  ghostty         cask    NEW   1.1.0
- ▸ 2026-10-08  ripgrep         formula UPD   15.2.0
- ▸ 2026-10-07  zot             formula NEW  0.4.20
- ▸ 2026-10-07  ghostty         cask    UPD   1.0.1
+   2026-10-08  ghostty         Open-source terminal emulator    cask    NEW   1.1.0
+   2026-10-08  ripgrep         Search tool like grep          formula UPD   15.2.0
+   2026-10-07  zot             Zettelkasten wiki              formula NEW  0.4.20
+   2026-10-07  ghostty         Open-source terminal emulator    cask    UPD   1.0.1
    …
 
- expanded row:
- └─ ripgrep — Search tool like grep and faster than it
-    brew install ripgrep   [copy]
-    ↗ project site  ↗ brew.sh page
+ sidebar cards:
+ ┌─ details ──────────────────────────────────────────── ┐
+ │ ripgrep — current card (follows selection)   [pin]   │
+ │ … metadata, brew install ripgrep [copy], links …      │
+ │ ghostty — pinned 1/3                          [unpin] │
+ │ …                                                    │
+ └────────────────────────────────────────────────────── ┘
 ```
 
 ## Stack & repo layout
@@ -161,7 +170,7 @@ scripts/
 src/routes/+page.svelte        # the whole app (single route)
 src/lib/data.svelte.ts         # changes.json fetch + gap-fill + merge + localStorage cache
 src/lib/state.svelte.ts        # localStorage: last visit, filters, expansion
-src/lib/components/            # Row.svelte, Detail.svelte, FilterBar.svelte
+src/lib/components/            # Row.svelte, PkgCard.svelte, FilterBar.svelte, SincePicker.svelte
 static/data/changes.json       # generated, committed by the Action
 ```
 

@@ -66,9 +66,13 @@ button {
 /* ---------------------------------------------------------------- layout */
 
 .shell {
-	max-width: 940px;
+	max-width: 1340px;
 	margin: 0 auto;
 	padding: 1.5rem 1rem 4rem;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 400px;
+	gap: 1.5rem;
+	align-items: start;
 }
 
 .rule {
@@ -146,8 +150,7 @@ button {
 	color: var(--fg);
 	font: inherit;
 	font-size: 0.85rem;
-	width: 11rem;
-	max-width: 40vw;
+	width: 100%;
 	padding: 0.15rem 0.1rem;
 }
 
@@ -182,8 +185,7 @@ button {
 
 .line {
 	display: grid;
-	grid-template-columns:
-		1.75ch 10ch minmax(6ch, 18ch) minmax(4ch, 1fr) 8ch 5ch minmax(6ch, 12ch) auto;
+	grid-template-columns: 10ch minmax(6ch, 18ch) minmax(4ch, 1fr) 8ch 5ch minmax(6ch, 12ch) auto;
 	gap: 0 0.75rem;
 	align-items: baseline;
 	width: 100%;
@@ -198,14 +200,6 @@ button {
 
 .row.selected > .line {
 	background: var(--sel);
-}
-
-.row.selected > .line .marker {
-	color: var(--accent);
-}
-
-.marker {
-	color: var(--faint);
 }
 
 .date {
@@ -469,35 +463,53 @@ input {
 	font-size: 0.7rem;
 }
 
-/* ------------------------------------------------------- detail panel */
-
-.shell.paneled {
-	max-width: 1340px;
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) 400px;
-	gap: 1.5rem;
-	align-items: start;
-}
+/* ------------------------------------------------------- sidebar cards */
 
 .panel-slot {
 	position: relative;
+}
+
+.sidebar {
+	position: sticky;
+	top: 1.25rem;
+	max-height: calc(100vh - 2.5rem);
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	padding-right: 0.25rem;
+}
+
+.sidebar-head {
+	color: var(--faint);
+	font-size: 0.7rem;
+	padding: 0 0.1rem;
+}
+
+.sidebar-empty {
+	color: var(--dim);
+	font-size: 0.85rem;
+	border: 1px dashed var(--border);
+	border-radius: 4px;
+	padding: 0.75rem 0.9rem;
 }
 
 .backdrop {
 	display: none;
 }
 
-.pkgpanel {
+.card {
 	background: var(--panel);
 	border: 1px solid var(--border);
 	border-radius: 4px;
 	padding: 0.9rem 1rem 1rem;
-	position: sticky;
-	top: 1.25rem;
-	max-height: calc(100vh - 2.5rem);
-	overflow-y: auto;
 	font-size: 0.85rem;
 	animation: panel-in 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* the card tracking the current selection gets a quiet accent edge */
+.card.current {
+	border-left: 2px solid var(--accent);
 }
 
 @keyframes panel-in {
@@ -511,96 +523,94 @@ input {
 	}
 }
 
-.pkgpanel-head {
+.card-head {
 	display: flex;
 	align-items: baseline;
 	gap: 0.5rem;
-	flex-wrap: wrap;
 	margin: 0 0 0.4rem;
 }
 
-.pkgpanel-head h2 {
+.card-head h2 {
 	margin: 0;
 	font-size: 1.05rem;
 	color: var(--accent);
 	font-weight: 600;
+	flex: 1;
+	min-width: 0;
+	overflow-wrap: anywhere;
 }
 
-.pkgpanel-kind {
+.card-head .pin {
 	color: var(--dim);
+	padding: 0.05rem 0.1rem;
+	align-self: baseline;
 	font-size: 0.75rem;
+	white-space: nowrap;
 }
 
-.pkgpanel-kind .kind {
-	color: var(--dim);
-}
-
-.pkgpanel-kind .kind.new {
-	color: var(--green);
-}
-
-.pkgpanel-head .close {
-	margin-left: auto;
-	color: var(--dim);
-	padding: 0.1rem 0.2rem;
-	align-self: flex-start;
-}
-
-.pkgpanel-head .close:hover {
+.card-head .pin:hover {
 	color: var(--fg);
 }
 
-.pkgpanel-display {
+.card-head .pin[aria-pressed='true'] {
+	color: var(--accent);
+}
+
+.card-display {
 	margin: 0 0 0.15rem;
 	color: var(--fg);
 	font-weight: 600;
 }
 
-.pkgpanel-desc {
+.card-desc {
 	margin: 0 0 0.6rem;
 	color: var(--fg);
 }
 
-.pkgpanel-desc .dim {
+.card-desc .dim {
 	color: var(--dim);
 }
 
-.pkgpanel-warn {
+.card-warn {
 	color: var(--red);
 	font-size: 0.8rem;
 	margin: 0 0 0.6rem;
 }
 
-.pkgpanel-rows {
+.card-rows {
 	margin: 0 0 0.7rem;
 	display: flex;
 	flex-direction: column;
 	gap: 0.15rem;
 }
 
-.pkgpanel-rows .row2 {
+.card-rows .row2 {
 	display: grid;
 	grid-template-columns: 9ch minmax(0, 1fr);
 	gap: 0.6rem;
 }
 
-.pkgpanel-rows dt {
+.card-rows dt {
 	color: var(--dim);
 }
 
-.pkgpanel-rows dd {
+.card-rows dd {
 	margin: 0;
 	overflow-wrap: anywhere;
 }
 
-.pkgpanel-install {
+.card-rows dd.new {
+	color: var(--green);
+}
+
+.card-install {
 	display: flex;
 	align-items: center;
 	gap: 0.6rem;
 	margin: 0.6rem 0;
 }
 
-.pkgpanel-caveats {
+.card-caveats {
 	background: var(--bg);
 	border: 1px solid var(--border);
 	border-radius: 2px;
@@ -612,25 +622,26 @@ input {
 	white-space: pre-wrap;
 }
 
-.pkgpanel-links {
+.card-links {
 	margin-top: 0.8rem;
 	display: flex;
 	gap: 1rem;
 }
 
-.pkgpanel-state {
+.card-state {
 	color: var(--dim);
 	margin: 0.5rem 0;
 }
 
-/* narrow screens: the panel becomes a right-anchored overlay */
+/* narrow screens: the whole sidebar becomes a right-anchored offcanvas,
+ * opened with enter/space or a row tap — selection alone doesn't move focus */
 
 @media (max-width: 1080px) {
-	.shell.paneled {
-		grid-template-columns: minmax(0, 1fr);
+	.shell {
+		display: block;
 	}
 
-	.backdrop {
+	.backdrop.open {
 		display: block;
 		position: fixed;
 		inset: 0;
@@ -648,7 +659,7 @@ input {
 		}
 	}
 
-	.pkgpanel {
+	.sidebar {
 		position: fixed;
 		z-index: 50;
 		top: 0;
@@ -656,21 +667,14 @@ input {
 		bottom: 0;
 		width: min(420px, 92vw);
 		max-height: none;
-		border-radius: 0;
-		border-top: none;
-		border-right: none;
-		border-bottom: none;
-		animation: slide-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+		padding: 1rem;
+		background: var(--bg);
+		box-shadow: -8px 0 24px rgb(0 0 0 / 0.35);
+		transform: translateX(100%);
+		transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
-	@keyframes slide-in {
-		from {
-			transform: translateX(30px);
-			opacity: 0.4;
-		}
-		to {
-			transform: none;
-			opacity: 1;
-		}
+	.sidebar.open {
+		transform: none;
 	}
 }
