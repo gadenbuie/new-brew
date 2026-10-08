@@ -69,8 +69,6 @@ class DataStore {
 	syncing = $state(false);
 	/** true when neither cache nor changes.json could be loaded */
 	failed = $state(false);
-	/** set when the current items were painted from the localStorage cache */
-	fromCache = $state(false);
 	/** human-readable "as of HH:MM" note when gap-fill bailed (rate limit etc.) */
 	asOf = $state<string | null>(null);
 
@@ -87,7 +85,6 @@ class DataStore {
 			this.items = cache.items;
 			this.generatedAt = cache.identity.generated_at;
 			this.retentionDays = cache.retentionDays ?? 60;
-			this.fromCache = true;
 			this.loading = false;
 		}
 
@@ -124,7 +121,6 @@ class DataStore {
 		//    revisits; each between-runs window pays for lookups once per browser).
 		if (idMatch && cache && cache.synced.core && cache.synced.cask) {
 			this.items = cache.items;
-			this.fromCache = false;
 			this.loading = false;
 			this.syncing = false;
 			return;
@@ -176,7 +172,6 @@ class DataStore {
 		const merged = mergeItems(mergeBase, events);
 
 		this.items = merged;
-		this.fromCache = false;
 		this.loading = false;
 		this.syncing = false;
 		this.asOf = bailed ? this.generatedAt : null;

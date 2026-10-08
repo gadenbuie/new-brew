@@ -120,6 +120,11 @@
 		}
 		if (inInput) return;
 
+		// Let Enter/Space activate a focused button or link (row toggles, chips,
+		// copy…) — the native click already does the right thing.
+		const tag = target?.tagName;
+		if ((e.key === 'Enter' || e.key === ' ') && (tag === 'BUTTON' || tag === 'A')) return;
+
 		if (e.key === 'j' || e.key === 'ArrowDown') {
 			e.preventDefault();
 			if (ui.selected < visible.length - 1) {
@@ -166,7 +171,7 @@
 		<p class="notes">only the last {data.retentionDays} days of data are kept.</p>
 	{/if}
 	{#if asOfLabel}
-		<p class="notes">live sync paused (rate limit) — data as of {asOfLabel}</p>
+		<p class="notes">live sync paused — showing data as of {asOfLabel}</p>
 	{/if}
 	{#if data.syncing}
 		<p class="notes">syncing…</p>
