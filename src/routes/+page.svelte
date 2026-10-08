@@ -267,30 +267,33 @@
 
 	<div class="rule" aria-hidden="true">{rule}</div>
 
-	{#if data.loading}
-		<p class="state">loading…</p>
-	{:else if data.failed}
-		<p class="state">
-			couldn't load data. <button class="retry" onclick={() => location.reload()}>reload</button> to retry.
-		</p>
-	{:else if visible.length === 0}
-		<p class="state">
-			{#if data.items.length === 0}
-				no data yet — the scheduled job fills in <code>data/changes.json</code> soon.
-			{:else if ui.query}
-				nothing matches “{ui.query}” — try <kbd>esc</kbd> to clear the filter.
-			{:else}
-				<span class="ok">✓ all caught up{#if sinceLabel} since {sinceLabel}{/if}.</span> new
-				changes appear as homebrew taps move — check back later or press <b>⌂ caught up</b>.
-			{/if}
-		</p>
-	{:else}
-		<ul class="list" aria-label="package timeline">
-			{#each visible as item, i (item.t + '/' + item.n)}
-				<Row {item} selected={ui.selected === i} onselect={onselectRow} />
-			{/each}
-		</ul>
-	{/if}
+	<div class="list-scroll">
+		{#if data.loading}
+			<p class="state">loading…</p>
+		{:else if data.failed}
+			<p class="state">
+				couldn't load data. <button class="retry" onclick={() => location.reload()}>reload</button> to
+				retry.
+			</p>
+		{:else if visible.length === 0}
+			<p class="state">
+				{#if data.items.length === 0}
+					no data yet — the scheduled job fills in <code>data/changes.json</code> soon.
+				{:else if ui.query}
+					nothing matches “{ui.query}” — try <kbd>esc</kbd> to clear the filter.
+				{:else}
+					<span class="ok">✓ all caught up{#if sinceLabel} since {sinceLabel}{/if}.</span> new changes
+					appear as homebrew taps move — check back later or press <b>⌂ caught up</b>.
+				{/if}
+			</p>
+		{:else}
+			<ul class="list" aria-label="package timeline">
+				{#each visible as item, i (item.t + '/' + item.n)}
+					<Row {item} selected={ui.selected === i} onselect={onselectRow} />
+				{/each}
+			</ul>
+		{/if}
+	</div>
 
 	<p class="footer">
 		j/k move · p pin/unpin · o homepage · O brew.sh · / filter · esc close · data: homebrew-core +

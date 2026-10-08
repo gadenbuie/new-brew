@@ -68,11 +68,32 @@ button {
 .shell {
 	max-width: 1340px;
 	margin: 0 auto;
-	padding: 1.5rem 1rem 4rem;
+	box-sizing: border-box;
+	height: 100dvh;
+	/* below this the page scrolls normally instead of squashing the list —
+	 * the footer shortcut hints are a nicety, not worth a 100px scroll window */
+	min-height: 600px;
+	padding: 1.5rem 1rem 1rem;
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) 400px;
 	gap: 1.5rem;
-	align-items: start;
+	align-items: stretch;
+}
+
+.main {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+/* the timeline scrolls inside its own pane so the header, filters, and
+ * footer shortcuts stay on screen */
+.list-scroll {
+	flex: 1 1 auto;
+	min-height: 18rem;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding-bottom: 0.5rem;
 }
 
 .rule {
@@ -347,9 +368,12 @@ button {
 /* footer */
 
 .footer {
-	margin-top: 2rem;
+	margin-top: 0.75rem;
 	color: var(--faint);
 	font-size: 0.75rem;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 /* ------------------------------------------------- browser surfaces */
@@ -639,6 +663,10 @@ input {
 @media (max-width: 1080px) {
 	.shell {
 		display: block;
+	}
+
+	.main {
+		height: 100%;
 	}
 
 	.backdrop.open {
