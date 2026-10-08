@@ -1,5 +1,6 @@
 <script lang="ts">
 	import CopyBtn from './CopyBtn.svelte';
+	import Spinner from './Spinner.svelte';
 	import { brewPageUrl, cachedPkg, fetchPkg, type PkgDetail } from '#lib/pkgs.ts';
 	import type { Item } from '#lib/types.ts';
 
@@ -107,7 +108,7 @@
 	</header>
 
 	{#if loading}
-		<p class="card-state">fetching details…</p>
+		<p class="card-state"><Spinner label="fetching package details" /> fetching details…</p>
 	{:else if error}
 		<p class="card-state">
 			couldn't load full details — <a href={brewPageUrl(item.t, item.n)} target="_blank"

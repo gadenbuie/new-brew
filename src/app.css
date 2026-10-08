@@ -213,6 +213,32 @@ button {
 	font-size: 0.75rem;
 }
 
+.searchbox {
+	position: relative;
+}
+
+/* While the search pipeline is busy, the spinner takes the native ✕
+ * button's spot — hide the native button for that window so they don't
+ * overlap, and pad the input so text can't run underneath. Idle, the
+ * native clear button returns. */
+.searchbox.busy .search::-webkit-search-cancel-button {
+	display: none;
+}
+
+.searchbox.busy .search {
+	padding-right: 1.4rem;
+}
+
+.searchbox .spin {
+	position: absolute;
+	right: 0.35rem;
+	top: 50%;
+	translate: 0 -50%;
+	color: var(--dim);
+	font-size: 0.85rem;
+	pointer-events: none;
+}
+
 .search {
 	background: transparent;
 	border: none;

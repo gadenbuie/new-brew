@@ -3,8 +3,10 @@
 	import PkgCard from '#lib/components/PkgCard.svelte';
 	import Row from '#lib/components/Row.svelte';
 	import SincePicker from '#lib/components/SincePicker.svelte';
+	import Spinner from '#lib/components/Spinner.svelte';
 	import { data } from '#lib/data.svelte.ts';
 	import { brewPageUrl } from '#lib/pkgs.ts';
+	import { RENDER_BATCH, nextBatchCount } from '#lib/render-batches.ts';
 	import { ui } from '#lib/state.svelte.ts';
 	import type { Filter, Item } from '#lib/types.ts';
 	import { isoDate, type SinceMode } from '#lib/window.ts';
@@ -29,29 +31,65 @@
 		return data.items.filter((it) => it.d >= start && it.d >= floor);
 	});
 
+	/** The search query that actually drives filtering. `ui.query` follows
+	 * the input on every keystroke (so the field echoes instantly), but
+	 * filtering a 30+ day window is expensive enough that we wait for a
+	 * short typing pause before committing it. Clearing goes through the
+	 * same pause: the field empties immediately, and the (equally expensive)
+	 * full-list restore lands a beat later instead of blocking the frame
+	 * that should repaint the input. */
+	const SEARCH_DEBOUNCE_MS = 150;
+	let appliedQuery = $state('');
+	let searchTimer: ReturnType<typeof setTimeout> | undefined;
+	/** Set just before a debounced commit lands, consumed by the batch
+	 * effect below to attribute the resulting fill to search activity.
+	 * Non-reactive on purpose: a committed query always produces a new
+	 * `visible`, so the batch effect always re-runs in the same flush and
+	 * the flag can't go stale. */
+	let commitIsSearch = false;
+	$effect(() => {
+		const q = ui.query;
+		clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => {
+			commitIsSearch = true;
+			appliedQuery = q;
+		}, SEARCH_DEBOUNCE_MS);
+		return () => clearTimeout(searchTimer);
+	});
+
+	// A new committed query invalidates the keyboard selection (the old
+	// selected row may have left the list) — but only once per pause, not
+	// per keystroke.
+	$effect(() => {
+		void appliedQuery;
+		ui.selected = 0;
+	});
+
+	/** The search-filtered window: the one place that scans the dataset for
+	 * the query, shared by the chip counts and the visible timeline. */
+	const searched = $derived.by(() => {
+		const q = appliedQuery.trim().toLowerCase();
+		if (!q) return inWindow;
+		return inWindow.filter(
+			(it) => it.n.toLowerCase().includes(q) || it.desc.toLowerCase().includes(q)
+		);
+	});
+
 	/** Per-chip counts over the windowed (but not chip-filtered) items. */
 	const counts = $derived.by(() => {
-		const q = ui.query.trim().toLowerCase();
-		const base = inWindow.filter(
-			(it) => !q || it.n.toLowerCase().includes(q) || it.desc.toLowerCase().includes(q)
-		);
 		return {
-			casks: base.filter((i) => i.t === 'c').length,
-			formulae: base.filter((i) => i.t === 'f').length,
-			new: base.filter((i) => i.k === 'n').length,
-			updated: base.filter((i) => i.k === 'u').length
+			casks: searched.filter((i) => i.t === 'c').length,
+			formulae: searched.filter((i) => i.t === 'f').length,
+			new: searched.filter((i) => i.k === 'n').length,
+			updated: searched.filter((i) => i.k === 'u').length
 		} satisfies Record<Filter, number>;
 	});
 
-	/** The visible timeline: window + chip toggles + search. Empty chip groups
-	 * pass both members; an activated chip excludes its group partner until
-	 * that partner is activated too. */
+	/** The visible timeline: search + chip toggles. Empty chip groups pass
+	 * both members; an activated chip excludes its group partner until that
+	 * partner is activated too. */
 	const visible = $derived.by(() => {
-		const q = ui.query.trim().toLowerCase();
-		return inWindow.filter((it) => {
-			if (q && !it.n.toLowerCase().includes(q) && !it.desc.toLowerCase().includes(q)) {
-				return false;
-			}
+		return searched.filter((it) => {
 			if (ui.activeTypes.length && !ui.activeTypes.includes(it.t)) return false;
 			if (ui.activeKinds.length && !ui.activeKinds.includes(it.k)) return false;
 			return true;
@@ -63,6 +101,48 @@
 		void visible.length;
 		if (ui.selected >= visible.length) ui.selected = Math.max(0, visible.length - 1);
 	});
+
+	/** True while a typed or cleared query is waiting to be committed. */
+	const searchPending = $derived(ui.query !== appliedQuery);
+
+	/** Time-sliced mounting. `visible` is data-only and cheap to recompute,
+	 * but mounting thousands of rows in one synchronous flush blocks the
+	 * frame — which froze the braille spinner mid-spin the moment a commit
+	 * landed. Instead, mount the first batch immediately, then grow the
+	 * window in rAF steps, yielding between batches so the thread — and the
+	 * spinner — keeps breathing. Batch math lives in render-batches.ts. */
+	let renderedCount = $state(0);
+	/** The slice of `visible` actually mounted right now. */
+	const shown = $derived(visible.slice(0, renderedCount));
+	/** True while the growing batch chain was kicked off by a search
+	 * commit. Fills also happen for non-search reasons (initial data
+	 * load, since-window changes, chip toggles) — they mount in batches
+	 * too, but only search activity gets the spinner. */
+	let fillFromSearch = $state(false);
+	$effect(() => {
+		const items = visible;
+		const fromSearch = commitIsSearch;
+		commitIsSearch = false;
+		renderedCount = Math.min(RENDER_BATCH, items.length);
+		if (items.length <= RENDER_BATCH) {
+			fillFromSearch = false;
+			return;
+		}
+		fillFromSearch = fromSearch;
+		let n = RENDER_BATCH;
+		const grow = () => {
+			n = nextBatchCount(n, items.length);
+			renderedCount = n;
+			if (n < items.length) requestAnimationFrame(grow);
+			else fillFromSearch = false;
+		};
+		const raf = requestAnimationFrame(grow);
+		return () => cancelAnimationFrame(raf);
+	});
+
+	/** Busy = waiting to commit a query, or mounting a search commit's
+	 * result in batches. Non-search fills spin nothing. */
+	const searchBusy = $derived(searchPending || fillFromSearch);
 
 	const sinceLabel = $derived.by(() => {
 		if (!ui.windowStart) return '';
@@ -277,21 +357,26 @@
 		ontogglekind={(k) => ui.toggleKind(k)}
 		oncaughtup={() => ui.markCaughtUp(data.retentionDays)}
 	/>
-	<input
-		class="search"
-		type="search"
-		placeholder="/ to filter — type a name"
-		bind:this={searchEl}
-		bind:value={ui.query}
-		aria-label="filter packages by name or description"
-		oninput={() => (ui.selected = 0)}
-	/>
+	<div class="searchbox" class:busy={searchBusy}>
+		<input
+			class="search"
+			type="search"
+			placeholder="/ to filter — type a name"
+			bind:this={searchEl}
+			bind:value={ui.query}
+			aria-label="filter packages by name or description"
+			aria-busy={searchBusy}
+		/>
+		{#if searchBusy}
+			<span class="spin" aria-hidden="true"><Spinner label="filtering packages" /></span>
+		{/if}
+	</div>
 
 	<div class="rule" aria-hidden="true">{rule}</div>
 
 	<div class="list-scroll">
 		{#if data.loading}
-			<p class="state">loading packages…</p>
+			<p class="state"><Spinner label="loading packages" /> loading packages…</p>
 		{:else if data.failed}
 			<p class="state">
 				couldn't load the package data — <button class="retry" onclick={() => location.reload()}>reload</button> to try
@@ -301,8 +386,8 @@
 			<p class="state">
 				{#if data.items.length === 0}
 					no data yet — packages appear after the first data sync.
-				{:else if ui.query}
-					nothing matches “{ui.query}” — try <kbd>esc</kbd> to clear the filter.
+				{:else if appliedQuery}
+					nothing matches “{appliedQuery}” — try <kbd>esc</kbd> to clear the filter.
 				{:else if ui.activeTypes.length || ui.activeKinds.length}
 					<span class="ok">✓ nothing in this window matches the current filters.</span>
 					clear one to widen the view, or check back later.
@@ -314,7 +399,7 @@
 			</p>
 		{:else}
 			<ul class="list" aria-label="package timeline">
-				{#each visible as item, i (item.t + '/' + item.n)}
+				{#each shown as item, i (item.t + '/' + item.n)}
 					<Row {item} selected={ui.selected === i} onselect={onselectRow} />
 				{/each}
 			</ul>

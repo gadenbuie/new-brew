@@ -223,4 +223,8 @@ static/data/changes.json       # generated; untracked — synced from gh-pages v
 - No backend, no auth, no analytics, no server-side anything.
 - No per-item seen/dismissed state (timestamp only, per decision).
 - No search index — filtering the loaded dataset is enough at this scale.
+  The search input applies its query on a short (150 ms) typing pause
+  rather than every keystroke; the filtered result is shared between the
+  chip counts and the visible list (one scan, not two); and the list
+  mounts in rAF-grown batches so a big commit can't block the frame.
 - No virtualized list until the DOM actually complains.
