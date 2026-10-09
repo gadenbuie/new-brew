@@ -69,8 +69,6 @@ class DataStore {
 	syncing = $state(false);
 	/** true when neither cache nor changes.json could be loaded */
 	failed = $state(false);
-	/** human-readable "as of HH:MM" note when gap-fill bailed (rate limit etc.) */
-	asOf = $state<string | null>(null);
 
 	#started = false;
 
@@ -101,12 +99,8 @@ class DataStore {
 		}
 
 		if (!server) {
-			if (cache) {
-				// Serve the cache; note that gap-fill is impossible without a fresh base.
-				this.asOf = this.generatedAt;
-			} else {
-				this.failed = true;
-			}
+			// No fresh base → gap-fill is impossible; keep serving the cache, if any.
+			if (!cache) this.failed = true;
 			this.loading = false;
 			return;
 		}
@@ -135,7 +129,6 @@ class DataStore {
 		const events: GapEvent[] = [];
 		const synced = { core: cache?.synced.core ?? null, cask: cache?.synced.cask ?? null };
 		const partial = { core: cache?.partial.core ?? null, cask: cache?.partial.cask ?? null };
-		let bailed = false;
 
 		for (const cfg of REPOS) {
 			if (idMatch && synced[cfg.key]) continue; // this repo already synced this window
@@ -160,7 +153,6 @@ class DataStore {
 				// have. Partial progress is kept so the next visit resumes instead
 				// of re-paying for the same chunks.
 				if (!(err instanceof SyncAborted)) console.warn(`[new-brew] gap-fill failed:`, err);
-				bailed = true;
 				partial[cfg.key] = progress.reached ?? partial[cfg.key];
 			}
 		}
@@ -174,7 +166,6 @@ class DataStore {
 		this.items = merged;
 		this.loading = false;
 		this.syncing = false;
-		this.asOf = bailed ? this.generatedAt : null;
 
 		// 6. Cache the merged dataset for instant paint + zero-request revisits.
 		writeCache({

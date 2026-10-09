@@ -929,3 +929,74 @@ input {
 		display: inline;
 	}
 }
+
+/* ------------------------------------------------------------- phones */
+
+/* One-line chrome rows: the lines above and below the table refuse to
+ * wrap. Extra details drop out, and long regions scroll horizontally
+ * instead of eating vertical space. */
+@media (max-width: 640px) {
+	.shell {
+		padding: 1rem 0.75rem 0.75rem;
+	}
+
+	.rule {
+		line-height: 1.2;
+	}
+
+	/* status line: the since picker stays visible, the tail scrolls if it
+	 * must, and the "updated" timestamp is a desktop-only detail. flex so
+	 * the tail can shrink below its content and scroll inside itself — a
+	 * plain scrollable .meta would clip the picker's absolute-positioned
+	 * popover */
+	.header .meta {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		min-width: 0;
+		white-space: nowrap;
+	}
+
+	.meta-updated {
+		display: none;
+	}
+
+	.meta-tail {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow-x: auto;
+	}
+
+	/* aria-live status lines: one line each, swipe to read */
+	.notes {
+		white-space: nowrap;
+		overflow-x: auto;
+		scrollbar-width: none;
+	}
+
+	/* the picker popover is anchored to the trigger near the left edge —
+	 * cap it to the viewport so small phones don't grow a page scrollbar.
+	 * the meta line's nowrap leaks in here; the pop's own text wraps. */
+	.since-pop {
+		max-width: calc(100vw - 1.5rem);
+		white-space: normal;
+	}
+
+	/* chips hold one row; the caught-up button rides at its end. nowrap keeps
+	 * the items from wrapping inside themselves as they squeeze against the
+	 * scroll edge ("⌂ caught up" would otherwise stack onto three lines) */
+	.filterbar {
+		flex-wrap: nowrap;
+		white-space: nowrap;
+		overflow-x: auto;
+		scrollbar-width: none;
+	}
+
+	/* the footer keeps its hints reachable by scrolling, not truncating */
+	.footer {
+		overflow-x: auto;
+		overflow-y: hidden;
+		text-overflow: clip;
+		scrollbar-width: none;
+	}
+}

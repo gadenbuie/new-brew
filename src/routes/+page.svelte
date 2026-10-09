@@ -156,13 +156,6 @@
 		return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 	});
 
-	const asOfLabel = $derived.by(() => {
-		if (!data.asOf) return '';
-		const d = new Date(data.asOf);
-		if (Number.isNaN(d.getTime())) return '';
-		return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-	});
-
 	let searchEl: HTMLInputElement | undefined = $state();
 
 	function keyOf(item: Item): string {
@@ -324,8 +317,10 @@
 					ui.sinceMode = 'custom';
 				}}
 				onclose={() => (ui.pickerOpen = false)}
-			/> · <span aria-live="polite">{visible.length}
-			{visible.length === 1 ? 'package' : 'packages'}</span>{#if updatedLabel} · updated {updatedLabel}{/if}
+			/>
+			<span class="meta-tail">· <span aria-live="polite">{visible.length}
+			{visible.length === 1 ? 'package' : 'packages'}</span>{#if updatedLabel}<span class="meta-updated">&nbsp;· updated {updatedLabel}</span>{/if}
+			</span>
 		</span>
 		<button
 			class="theme-toggle"
@@ -339,9 +334,6 @@
 		<p class="notes" aria-live="polite">first visit — showing the last 7 days. press <b>⌂ caught up</b> when you're done.</p>
 	{:else if ui.capped}
 		<p class="notes" aria-live="polite">only the last {data.retentionDays} days of data are kept.</p>
-	{/if}
-	{#if asOfLabel}
-		<p class="notes" aria-live="polite">live sync paused — showing data as of {asOfLabel} (reload to retry)</p>
 	{/if}
 	{#if data.syncing}
 		<p class="notes" aria-live="polite">syncing latest changes…</p>
