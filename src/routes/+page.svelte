@@ -353,7 +353,7 @@
 		<button
 			class="theme-toggle"
 			onclick={() => ui.cycleTheme()}
-			title="theme — cycles light / dark / system"
+			title="theme — toggles between system and the opposite"
 		>
 			[{ui.theme}]
 		</button>

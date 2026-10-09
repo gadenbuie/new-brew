@@ -208,10 +208,15 @@ class UIState {
 		return this.windowStart ? isoDate(this.windowStart) : '';
 	}
 
-	/** Cycle dark → light → system → dark. */
+	/** Toggle: from system, jump to the opposite of what the system shows;
+	 * from an explicit choice, return to system. */
 	cycleTheme(): void {
 		const next: ThemeMode =
-			this.theme === 'dark' ? 'light' : this.theme === 'light' ? 'system' : 'dark';
+			this.theme === 'system'
+				? systemPrefersLight()
+				? 'dark'
+				: 'light'
+				: 'system';
 		this.setTheme(next);
 	}
 
