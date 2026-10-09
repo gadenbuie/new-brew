@@ -114,6 +114,24 @@
 	let renderedCount = $state(0);
 	/** The slice of `visible` actually mounted right now. */
 	const shown = $derived(visible.slice(0, renderedCount));
+
+	/** `shown` grouped by day, for the sticky date headings. Each group
+	 * carries its offset into the visible list so row selection still
+	 * compares against global indices. The group's own box is also what
+	 * bounds its sticky heading — see the .date-heading CSS. */
+	const dateGroups = $derived.by(() => {
+		const out: { date: string; label: string; items: Item[]; offset: number }[] = [];
+		for (let i = 0; i < shown.length; i++) {
+			const it = shown[i];
+			const g = out[out.length - 1];
+			if (!g || g.date !== it.d) {
+				out.push({ date: it.d, label: dayLabel(it.d), items: [it], offset: i });
+			} else {
+				g.items.push(it);
+			}
+		}
+		return out;
+	});
 	/** True while the growing batch chain was kicked off by a search
 	 * commit. Fills also happen for non-search reasons (initial data
 	 * load, since-window changes, chip toggles) — they mount in batches
@@ -160,6 +178,16 @@
 
 	function keyOf(item: Item): string {
 		return `${item.t}/${item.n}`;
+	}
+
+	/** "Oct 6"-style group heading. The T00:00 keeps the ISO date anchored
+	 * to local midnight — a bare "YYYY-MM-DD" would parse as UTC and drift a
+	 * day on negative-offset timezones. */
+	function dayLabel(iso: string): string {
+		return new Date(`${iso}T00:00`).toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric'
+		});
 	}
 
 	/** Below the two-column breakpoint the sidebar lives offcanvas. */
@@ -389,8 +417,15 @@
 			</p>
 		{:else}
 			<ul class="list" aria-label="package timeline">
-				{#each shown as item, i (item.t + '/' + item.n)}
-					<Row {item} selected={ui.selected === i} onselect={onselectRow} />
+				{#each dateGroups as g (g.date)}
+					<li class="date-group">
+						<div class="date-heading">{g.label}</div>
+						<ul class="group-rows">
+							{#each g.items as item, i (item.t + '/' + item.n)}
+								<Row {item} selected={ui.selected === g.offset + i} onselect={onselectRow} />
+							{/each}
+						</ul>
+					</li>
 				{/each}
 			</ul>
 		{/if}

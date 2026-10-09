@@ -19,7 +19,6 @@
 		aria-current={selected ? 'true' : undefined}
 		title={item.desc || item.n}
 	>
-		<span class="date">{item.d}</span>
 		<span class="name">{item.n}</span>
 		<span class="summary">{item.desc}</span>
 		<span class="type" class:cask={item.t === 'c'}>{item.t === 'c' ? 'cask' : 'formula'}</span>

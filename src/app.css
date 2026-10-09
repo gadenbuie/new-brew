@@ -260,7 +260,8 @@ button {
 
 /* ------------------------------------------------------------------ list */
 
-.list {
+.list,
+.group-rows {
 	list-style: none;
 	margin: 0;
 	padding: 0;
@@ -268,11 +269,29 @@ button {
 
 .row {
 	border-bottom: 1px solid var(--border);
+	/* j/k scrollIntoView stops short of the pinned heading above */
+	scroll-margin-top: 2.2rem;
+}
+
+/* date group headings. each heading is bounded by its group's box: it
+ * scrolls with the list — a visible line where each date starts — pins
+ * to the top of the scroll pane while any of its rows are in view, and
+ * leaves with the last of them, so the next date's heading visibly
+ * slides up to take the pin */
+.date-heading {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	background: var(--bg);
+	border-bottom: 1px solid var(--border);
+	color: var(--dim);
+	font-size: 0.8rem;
+	padding: 0.25rem 0.3rem 0.2rem;
 }
 
 .line {
 	display: grid;
-	grid-template-columns: 10ch minmax(6ch, 18ch) minmax(4ch, 1fr) 8ch 5ch minmax(6ch, 12ch) auto;
+	grid-template-columns: minmax(6ch, 18ch) minmax(4ch, 1fr) 8ch 5ch minmax(6ch, 12ch) auto;
 	gap: 0 0.75rem;
 	align-items: baseline;
 	width: 100%;
@@ -304,11 +323,6 @@ button {
 
 [data-theme='light'] .row.selected > .line {
 	background: var(--panel);
-}
-
-.date {
-	color: var(--dim);
-	white-space: nowrap;
 }
 
 .name {
@@ -351,22 +365,18 @@ button {
 	text-overflow: ellipsis;
 }
 
-/* on a narrow pane the single-line grid collapses — the description column
- * gets a couple of characters at phone widths. reflow the row onto two
- * lines instead: date · name · version on top, description and badges below.
- * the date column doubles as the second line's indent. */
+/* on a narrow pane the single-line grid collapses — with the date column
+ * gone, name and badges would fight for what's left. reflow the row onto
+ * two lines instead: name · type · kind · version on top, the description
+ * running full-width below. */
 @container (max-width: 640px) {
 	.line {
-		grid-template-columns: 10ch minmax(0, 1fr) auto auto auto auto;
+		grid-template-columns: minmax(0, 1fr) auto auto auto auto;
 		grid-template-areas:
-			'date name name name dep ver'
-			'.    sum  sum  t   k   k';
+			'name t   k  dep ver'
+			'sum  sum sum sum sum';
 		gap: 0.1rem 0.5rem;
 		padding-block: 0.25rem;
-	}
-
-	.line .date {
-		grid-area: date;
 	}
 
 	.line .name {
