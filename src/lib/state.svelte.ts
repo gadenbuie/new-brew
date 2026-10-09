@@ -108,7 +108,7 @@ class UIState {
 
 	#initialized = false;
 
-	/** Browser-only; call once from the page. Registers the leave listeners. */
+	/** Browser-only; call once from the page. Idempotent. */
 	init(): void {
 		if (!browser || this.#initialized) return;
 		this.#initialized = true;
@@ -123,23 +123,29 @@ class UIState {
 		window
 			.matchMedia('(prefers-color-scheme: light)')
 			.addEventListener('change', () => this.#onSystemChange());
-
-		const stamp = () => this.#stampVisit();
-		window.addEventListener('pagehide', stamp);
-		document.addEventListener('visibilitychange', () => {
-			if (document.visibilityState === 'hidden') stamp();
-		});
 	}
 
 	/**
-	 * Recompute the visit window. Cheap; also used when retention first
-	 * loads or the since-mode changes. Tracks the session-only override.
+	 * The since-last-visit window. Cheap; also recomputes when retention
+	 * first loads or the since-mode changes. Tracks the session-only override.
 	 */
+	#windowSeeded = false;
+	#lastVisitMs: number | null = null;
+
 	refreshWindow(retentionDays: number): void {
 		if (!browser) return;
+		// Seed once per session: capture the previous visit's open, then stamp
+		// this one. Every later call (retention load, since changes) recomputes
+		// from the captured value — storage is never re-read, so the window
+		// can't shift under a running session.
+		if (!this.#windowSeeded) {
+			this.#windowSeeded = true;
+			this.#lastVisitMs = readLastVisit();
+			this.#stampVisit();
+		}
 		const w = presetWindow(
 			this.sinceMode,
-			readLastVisit(),
+			this.#lastVisitMs,
 			Date.now(),
 			retentionDays,
 			this.sinceCustom
@@ -183,16 +189,6 @@ class UIState {
 		this.sinceMode = mode;
 		if (customIso) this.sinceCustom = customIso;
 		this.pickerOpen = false;
-		this.selected = 0;
-	}
-
-	/** "caught up" button: back to auto, stamp now, recompute (list collapses). */
-	markCaughtUp(retentionDays: number): void {
-		this.sinceMode = 'auto';
-		this.sinceCustom = '';
-		this.pickerOpen = false;
-		this.#stampVisit();
-		this.refreshWindow(retentionDays);
 		this.selected = 0;
 	}
 

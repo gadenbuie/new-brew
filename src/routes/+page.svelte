@@ -331,7 +331,7 @@
 		</button>
 	</header>
 	{#if ui.sinceMode === 'auto' && ui.firstVisit}
-		<p class="notes" aria-live="polite">first visit — showing the last 7 days. press <b>⌂ caught up</b> when you're done.</p>
+		<p class="notes" aria-live="polite">first visit — showing the last 7 days.</p>
 	{:else if ui.capped}
 		<p class="notes" aria-live="polite">only the last {data.retentionDays} days of data are kept.</p>
 	{/if}
@@ -347,7 +347,6 @@
 		{counts}
 		ontoggletype={(t) => ui.toggleType(t)}
 		ontogglekind={(k) => ui.toggleKind(k)}
-		oncaughtup={() => ui.markCaughtUp(data.retentionDays)}
 	/>
 	<div class="searchbox" class:busy={searchBusy}>
 		<input
@@ -385,8 +384,7 @@
 					clear one to widen the view, or check back later.
 				{:else}
 					<span class="ok caughtup-line">✓ all caught up</span><span class="ok caughtup-rest">{#if sinceLabel}{' — nothing new since '}{sinceLabel}{/if}.</span>
-					new changes arrive as homebrew taps move; press <b>⌂ caught up</b> to reset the
-					window to now.
+					new changes arrive as homebrew taps move.
 				{/if}
 			</p>
 		{:else}

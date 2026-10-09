@@ -258,15 +258,6 @@ button {
 	flex: 1;
 }
 
-.caughtup {
-	color: var(--dim);
-	padding: 0.1rem 0.15rem;
-}
-
-.caughtup:hover {
-	color: var(--green);
-}
-
 /* ------------------------------------------------------------------ list */
 
 .list {
@@ -909,7 +900,6 @@ input {
 	 * changing the desktop density */
 	@media (pointer: coarse) {
 		.chip,
-		.caughtup,
 		.theme-toggle,
 		.since-trigger {
 			padding: 0.4rem 0.35rem;
@@ -982,9 +972,8 @@ input {
 		white-space: normal;
 	}
 
-	/* chips hold one row; the caught-up button rides at its end. nowrap keeps
-	 * the items from wrapping inside themselves as they squeeze against the
-	 * scroll edge ("⌂ caught up" would otherwise stack onto three lines) */
+	/* chips hold one row. nowrap keeps the items from wrapping inside
+	 * themselves as they squeeze against the scroll edge */
 	.filterbar {
 		flex-wrap: nowrap;
 		white-space: nowrap;

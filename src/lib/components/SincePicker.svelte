@@ -26,7 +26,7 @@
 	} = $props();
 
 	const presets: { id: SinceMode; label: string }[] = [
-		{ id: 'auto', label: 'auto' },
+		{ id: 'auto', label: 'last visit' },
 		{ id: 'yesterday', label: 'yesterday' },
 		{ id: 'week', label: 'this week' },
 		{ id: '30d', label: '30 days' }
@@ -84,7 +84,7 @@
 					}}
 				/>
 			</label>
-			<p class="since-note">auto = since your last visit (7-day default)</p>
+			<p class="since-note">last visit = new since you last opened the app (7-day default)</p>
 		</div>
 	{/if}
 </div>

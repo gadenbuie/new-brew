@@ -6,8 +6,7 @@
 		activeKinds,
 		counts,
 		ontoggletype,
-		ontogglekind,
-		oncaughtup
+		ontogglekind
 	}: {
 		/** empty = both types pass */
 		activeTypes: PkgType[];
@@ -16,7 +15,6 @@
 		counts: Record<Filter, number>;
 		ontoggletype: (t: PkgType) => void;
 		ontogglekind: (k: Kind) => void;
-		oncaughtup: () => void;
 	} = $props();
 
 	const typeChips: { t: PkgType; label: string }[] = [
@@ -52,10 +50,4 @@
 			[{c.label}]&nbsp;<span class="cnt">{counts[c.k === 'n' ? 'new' : 'updated']}</span>
 		</button>
 	{/each}
-
-	<span class="spacer"></span>
-
-	<button class="caughtup" onclick={oncaughtup} title="mark everything seen; window resets to now">
-		⌂ caught up
-	</button>
 </div>
