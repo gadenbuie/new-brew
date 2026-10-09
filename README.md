@@ -6,8 +6,7 @@ console-styled timeline. It tracks both formulae and casks over a 60-day
 window, remembers what you've already seen, and links out to each project's
 homepage and brew.sh page.
 
-See [DESIGN.md](DESIGN.md) for the full architecture (hybrid data model,
-browser gap-fill, caching strategy).
+![New Brew showing the Homebrew package timeline and details panel](assets/new-brew-demo-poster.png)
 
 ## Usage
 
