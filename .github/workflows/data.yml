@@ -4,9 +4,14 @@ on:
   schedule:
     # US work hours: 8am ET, 12:30pm ET, 5pm ET. Cron ignores DST, so these
     # drift an hour earlier in winter — acceptable per DESIGN.md.
-    - cron: "0 12 * * *"
-    - cron: "30 16 * * *"
-    - cron: "0 21 * * *"
+    #
+    # Times are shifted EARLIER to compensate for GitHub Actions schedule
+    # queue delays (measured Oct 2026: ~2-4h late, growing through the day).
+    # Intended-fire times are still 12:00, 16:30, 21:00 UTC; re-measure with
+    # `gh run list --workflow data.yml` if runs drift again.
+    - cron: "0 8 * * *"
+    - cron: "0 14 * * *"
+    - cron: "30 18 * * *"
   workflow_dispatch:
 
 permissions:
