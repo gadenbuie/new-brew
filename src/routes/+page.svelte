@@ -364,7 +364,11 @@
 		<p class="notes" aria-live="polite">only the last {data.retentionDays} days of data are kept.</p>
 	{/if}
 	{#if data.syncing}
-		<p class="notes" aria-live="polite">syncing latest changes…</p>
+		<!-- the braille frame swaps ~12×/s; inside a live region that re-announces
+		     the line, so the glyph alone is hidden and the text carries it -->
+		<p class="notes" aria-live="polite">
+			<span class="sync-spin" aria-hidden="true"><Spinner /></span> syncing latest changes…
+		</p>
 	{/if}
 
 	<div class="rule" aria-hidden="true">{rule}</div>
@@ -403,7 +407,16 @@
 			</p>
 		{:else if visible.length === 0}
 			<p class="state">
-				{#if data.items.length === 0}
+				{#if data.syncing && !appliedQuery && !ui.activeTypes.length && !ui.activeKinds.length}
+					<!-- a sync is still in flight: this window is empty right now, but
+					     that isn't the final word — don't claim “all caught up” yet.
+					     no spinner here: the status line above already spins. -->
+					{#if data.items.length === 0}
+						the timeline fills in when the sync lands…
+					{:else}
+						nothing new{#if sinceLabel}{' since '}{sinceLabel}{/if} yet — the sync is still running.
+					{/if}
+				{:else if data.items.length === 0}
 					no data yet — packages appear after the first data sync.
 				{:else if appliedQuery}
 					nothing matches “{appliedQuery}” — try <kbd>esc</kbd> to clear the filter.

@@ -107,6 +107,10 @@ class DataStore {
 
 		this.generatedAt = server.generated_at;
 		this.retentionDays = server.retention_days ?? 60;
+		// The base dataset is in hand, so the timeline is answerable from here:
+		// the gap-fill below only appends to it. Clearing `loading` now keeps the
+		// list from claiming "loading packages" while a sync is what's running.
+		this.loading = false;
 
 		const idMatch = !!cache && identity(cache.identity) === identity(server);
 

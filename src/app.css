@@ -171,6 +171,14 @@ button {
 	margin: 0.25rem 0 0;
 }
 
+/* the sync note's spinner holds a fixed cell so the sentence doesn't shift
+ * as the braille frames swap */
+.notes .sync-spin {
+	display: inline-block;
+	width: 1em;
+	color: var(--accent);
+}
+
 /* narrow: the theme toggle moves up beside the title and the meta line
  * drops to its own full-width row — one wrapped line instead of two */
 @media (max-width: 1080px) {
