@@ -24,6 +24,8 @@ const CASK_REPO = process.env.NB_CASK_REPO ?? 'https://github.com/Homebrew/homeb
 const FORMULA_API = process.env.NB_FORMULA_API ?? 'https://formulae.brew.sh/api/formula.json';
 const CASK_API = process.env.NB_CASK_API ?? 'https://formulae.brew.sh/api/cask.json';
 const SINCE_DAYS = Number(process.env.NB_SINCE_DAYS ?? 60);
+/** A package keeps `new` this long after its creation, follow-up commits or not. */
+const GRACE_DAYS = Number(process.env.NB_GRACE_DAYS ?? 7);
 const OUT = path.resolve(process.cwd(), process.env.NB_OUT ?? 'static/data/changes.json');
 
 /**
@@ -50,7 +52,7 @@ async function main() {
       ...(await collectEvents(caskDir, 'Casks/', 'c')),
     ];
 
-    const rows = dedupe(events);
+    const rows = dedupe(events, Date.now());
     const { formulae, casks } = await fetchMetadata();
 
     const items = rows.map((row) => {
@@ -61,6 +63,7 @@ async function main() {
         k: row.kind,
         d: row.date.slice(0, 10),
         ts: row.date, // full UTC ISO committer timestamp of the latest change
+        ...(row.addedAt ? { ad: row.addedAt.slice(0, 10) } : {}),
         v: meta?.version ?? '',
         desc: meta?.desc ?? '',
         url: meta?.homepage ?? '',
@@ -192,14 +195,32 @@ function parseLog(out, type) {
 }
 
 /**
+ * A package we watched arrive keeps `new` through a short grace period, so a
+ * same-day follow-up ("fix livecheck", "update url") doesn't erase that it
+ * just appeared. Only meaningful when the creation date is known.
+ * @param {string | null} addedAt creation date, UTC ISO, or null
+ * @param {number} nowMs
+ */
+function withinGrace(addedAt, nowMs) {
+  if (!addedAt) return false;
+  const t = Date.parse(addedAt);
+  return Number.isFinite(t) && nowMs - t <= GRACE_DAYS * 86_400_000;
+}
+
+/**
  * Collapse events to one row per package (key = name + type):
  * - `d` is the date of the MOST RECENT event (the last thing that happened);
- * - kind is "n" only if the package's EARLIEST in-window event was an
- *   addition, i.e. it entered the window as a new package (even if it was
- *   then modified again).
+ * - kind describes that event, not the package's lifetime: "n" only if the
+ *   most recent event is the creation, or the creation is recent enough to
+ *   still be in its grace period. A package we watched arrive and that has
+ *   since shipped a release is an update — we already have a release on an
+ *   earlier day, so its latest one isn't news;
+ * - `addedAt` is the creation date when we saw it happen (the oldest in-window
+ *   event is an addition), null when the package predates the window.
  * @param {Event[]} events
+ * @param {number} nowMs
  */
-function dedupe(events) {
+function dedupe(events, nowMs = Date.now()) {
   /** @type {Map<string, Event[]>} */
   const byPkg = new Map();
   for (const ev of events) {
@@ -211,21 +232,29 @@ function dedupe(events) {
 
   const rows = [];
   for (const list of byPkg.values()) {
-  // Commit order is newest -> oldest in the log output; sort so "earliest"
-    // and "latest" below mean what they say. On date ties, in-window
-    // appearances must lose to disappearances so `gone` wins.
+    // Newest -> oldest. The log emits commits newest-first and Array#sort is
+    // stable, so same-second ties stay in true commit order. On date ties an
+    // appearance must lose to a disappearance so `gone` wins.
     list.sort((a, b) =>
-      a.date < b.date ? -1 : a.date > b.date ? 1 : a.gone ? 1 : b.gone ? -1 : 0
+      a.date > b.date ? -1 : a.date < b.date ? 1 : a.gone ? -1 : b.gone ? 1 : 0
     );
-    const latest = list[list.length - 1];
+    const latest = list[0];
     // Deleted or renamed-away within the window — out of scope entirely
     // (this app is about discovering new things, not tracking removals).
     if (latest.gone) continue;
+    // The creation is on record only when the file has no history before the
+    // window: then the oldest event we can see is its `A` commit. Otherwise
+    // the package predates the data and we can't claim it's new.
+    const oldest = list[list.length - 1];
+    const addedAt = oldest.added ? oldest.date : null;
     rows.push({
       name: latest.name,
       type: latest.type,
-      kind: /** @type {'n' | 'u'} */ (list[0].added ? 'n' : 'u'),
+      kind: /** @type {'n' | 'u'} */ (
+        latest.added || withinGrace(addedAt, nowMs) ? 'n' : 'u'
+      ),
       date: latest.date, // full UTC ISO; caller slices the day for `d`
+      addedAt,
     });
   }
   return rows;

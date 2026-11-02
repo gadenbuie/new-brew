@@ -91,9 +91,65 @@ describe('mergeItems', () => {
 		expect(merged[0].k).toBe('n');
 	});
 
-	it('keeps new when later gap events are updates (earliest in-window event was an addition)', () => {
-		const merged = mergeItems([item({ n: 'rg', k: 'n' })], [ev({ n: 'rg', k: 'u' })]);
-		expect(merged[0].k).toBe('n');
+	it('demotes new to updated once a later release lands outside the grace window', () => {
+		// the gloomberb case: added in-window, then bumped 43 days later
+		const merged = mergeItems(
+			[
+				item({
+					n: 'gloomberb',
+					t: 'c',
+					k: 'n',
+					d: '2026-09-20',
+					ts: '2026-09-20T14:49:17.000Z',
+					ad: '2026-09-20'
+				})
+			],
+			[ev({ n: 'gloomberb', t: 'c', k: 'u', d: '2026-11-01', ts: '2026-11-01T18:52:01.000Z' })],
+			Date.parse('2026-11-02T00:00:00.000Z')
+		);
+		expect(merged[0]).toMatchObject({ k: 'u', d: '2026-11-01', ts: '2026-11-01T18:52:01.000Z' });
+	});
+
+	it('keeps new through the grace window, so a same-day follow-up does not erase it', () => {
+		const now = Date.parse('2026-10-05T00:00:00.000Z');
+		const merged = mergeItems(
+			[item({ n: 'font-x', t: 'c', k: 'n', d: '2026-10-01', ad: '2026-10-01' })],
+			[ev({ n: 'font-x', t: 'c', k: 'u', d: '2026-10-01', ts: '2026-10-01T23:00:00.000Z' })],
+			now
+		);
+		expect(merged[0]).toMatchObject({ k: 'n', d: '2026-10-01', ad: '2026-10-01' });
+	});
+
+	it('lets the grace window expire', () => {
+		const now = Date.parse('2026-10-09T00:00:00.000Z'); // day 8
+		const merged = mergeItems(
+			[item({ n: 'font-x', t: 'c', k: 'n', d: '2026-10-01', ad: '2026-10-01' })],
+			[ev({ n: 'font-x', t: 'c', k: 'u', d: '2026-10-02', ts: '2026-10-02T09:00:00.000Z' })],
+			now
+		);
+		expect(merged[0].k).toBe('u');
+	});
+
+	it('records the creation date when an added event introduces a package', () => {
+		const merged = mergeItems([], [ev({ n: 'fresh', k: 'n', d: '2026-10-08' })], Date.now());
+		expect(merged[0]).toMatchObject({ k: 'n', ad: '2026-10-08' });
+	});
+
+	it('keeps new when the gap event is older than the row', () => {
+		const merged = mergeItems(
+			[item({ n: 'rg', k: 'n', d: '2026-10-08', ts: '2026-10-08T18:00:00.000Z' })],
+			[ev({ n: 'rg', k: 'u', d: '2026-10-02', ts: '2026-10-02T09:00:00.000Z' })]
+		);
+		expect(merged[0]).toMatchObject({ k: 'n', d: '2026-10-08' });
+	});
+
+	it('keeps the current kind when a replayed event ties on time', () => {
+		// the precomputed row is folded in first, so it wins a same-instant tie
+		const merged = mergeItems(
+			[item({ n: 'rg', k: 'u', d: '2026-10-08', ts: '2026-10-08T12:00:00.000Z' })],
+			[ev({ n: 'rg', k: 'n', d: '2026-10-08', ts: '2026-10-08T12:00:00.000Z' })]
+		);
+		expect(merged[0].k).toBe('u');
 	});
 
 	it('dedupes bottle-only rebuilds into one row', () => {

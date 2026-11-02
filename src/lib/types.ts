@@ -3,7 +3,10 @@
 /** Package type: `f` formula, `c` cask. */
 export type PkgType = 'f' | 'c';
 
-/** Change kind: `n` new (added in window), `u` updated. */
+/**
+ * Change kind: `n` new (the row's latest event is the package's creation),
+ * `u` updated (any later change — see DESIGN.md, "what `new` means").
+ */
 export type Kind = 'n' | 'u';
 
 /** One row in the timeline — exact on-the-wire schema of changes.json items. */
@@ -22,6 +25,12 @@ export interface Item {
 	 * existed; sort code falls back to `d` at UTC midnight.
 	 */
 	ts?: string;
+	/**
+	 * Creation date (YYYY-MM-DD) when the package appeared inside our data
+	 * window — absent for packages that already existed when the window
+	 * opened. Anchors the `new` grace period (see DESIGN.md).
+	 */
+	ad?: string;
 	/** current stable version ('' when unknown, e.g. gap-fill only rows) */
 	v: string;
 	/** short description */

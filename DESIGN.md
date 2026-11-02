@@ -34,10 +34,36 @@ acceptable):
 - Joins each package with `formulae.brew.sh/api/formula.json` +
   `cask.json` metadata at build time → every row carries `description`,
   `homepage`, `version`, `deprecated`.
-- Deduplicates to one row per package: the most recent event wins, but a
-  package whose earliest in-window event was an addition is marked `new`.
+- Deduplicates to one row per package: the most recent event wins, and
+  `new` / `updated` describes *that event* — see below.
 - Records `generated_at` plus the `core_head_sha` / `cask_head_sha` the
   data was cut from — this is the browser's gap-fill anchor.
+
+#### What `new` means
+
+A row is `n` when **the package is new to us**, not when it merely changed
+recently — with one important exception for follow-up commits:
+
+- `n` — the newest in-window event is the file's creation (an `A` commit).
+  A package added two weeks ago that has never been touched since is still
+  `n`, because the last thing that happened to it is that it arrived.
+- `n` — the creation is within the **grace window** (`GRACE_DAYS`, 7 days;
+  `NB_GRACE_DAYS` in the generator). Nearly every new formula or cask gets a
+  follow-up push within hours — `fix livecheck`, `update url`, `add zap` —
+  and without a grace window 61% of new packages would be badged `updated`
+  before anyone ever saw them.
+- `u` — everything else. Once the package is older than the grace window,
+  a release makes the row `u`: we already have a release for it on an
+  earlier day, so today's isn't news.
+
+The creation date travels in the row as `ad` (`YYYY-MM-DD`) whenever the
+oldest event we can see is an addition, i.e. whenever the file has no
+history before the window. Rows for packages that predate the window carry
+no `ad` and can never be `n`.
+
+The old rule marked a package `new` for the whole 60-day retention window,
+which meant anything shipping daily (casks on a fast release cadence) sat at
+the top of `new` every single day.
 
 Schema (illustrative):
 
@@ -54,6 +80,7 @@ Schema (illustrative):
       "k": "u",             // "u" updated | "n" new
       "d": "2026-10-08",    // date of most recent event (UTC, day granularity)
       "ts": "2026-10-08T21:03:11.000Z", // full UTC committer timestamp — the sort key
+      "ad": "2026-10-08",    // creation date — only when we watched it appear
       "v": "15.2.0",        // current stable version
       "desc": "Search tool like grep and faster than it",
       "url": "https://github.com/BurntSushi/ripgrep",
@@ -73,7 +100,9 @@ fills the gap between `*_head_sha` in changes.json and current HEAD:
 - Chunk at ≤75 commits per compare (250-commit API cap; 300-file response cap)
   → an hourly gap is typically a single compare call per repo.
 - Merge gap events into the precomputed rows (same dedupe rules), keeping the
-  newer date and letting an `added` event upgrade a package to `new`.
+  newer date; `k` follows whichever event is newest, so a later `modified`
+  event demotes an `added` row back to `updated` once its grace window has
+  passed.
 - Sorting is by precise change time (`ts`, a UTC ISO committer timestamp).
   Precomputed rows carry the exact commit time; gap events share their
   compare-chunk's newest-commit timestamp (the compare API can't attribute

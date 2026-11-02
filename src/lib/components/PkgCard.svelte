@@ -92,7 +92,9 @@
 		rows.push(['type', item.t === 'c' ? 'cask' : 'formula']);
 		rows.push([
 			'status',
-			`${item.k === 'n' ? 'new' : 'updated'} · ${item.d}`,
+			// `d` is the latest change, which for a `new` row is often a follow-up
+			// commit — name the creation date instead so the badge stays honest.
+			item.k === 'n' ? `new · added ${item.ad ?? item.d}` : `updated · ${item.d}`,
 			item.k === 'n' ? 'new' : undefined
 		]);
 		return rows;
